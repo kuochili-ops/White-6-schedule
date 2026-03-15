@@ -15,10 +15,11 @@
         input, textarea { width: 100%; padding: 12px; border: 1.5px solid #eee; border-radius: 12px; box-sizing: border-box; font-size: 16px; font-family: inherit; }
         textarea { height: 80px; resize: none; }
         .checkbox-group { display: flex; align-items: center; gap: 8px; margin: 10px 0; font-size: 14px; color: #666; cursor: pointer; }
-        #map-box { width: 100%; height: 220px; border-radius: 16px; margin-top: 10px; display: none; overflow: hidden; border: 1px solid #eee; }
+        #map-box { width: 100%; height: 200px; border-radius: 16px; margin-top: 10px; display: none; overflow: hidden; border: 1px solid #eee; }
         #map-iframe { width: 100%; height: 100%; border: 0; }
         button { width: 100%; padding: 16px; border: none; border-radius: 16px; font-size: 18px; font-weight: bold; background: var(--primary); color: white; cursor: pointer; margin-top: 10px; }
         button:active { opacity: 0.8; transform: scale(0.98); }
+        .hint { font-size: 11px; color: #aaa; text-align: center; margin-top: 15px; line-height: 1.4; }
     </style>
 </head>
 <body>
@@ -28,7 +29,7 @@
     
     <div class="field">
         <label>活動主題</label>
-        <input type="text" id="title" placeholder="活動名稱">
+        <input type="text" id="title" placeholder="例如：白六課程 A">
     </div>
 
     <div class="field">
@@ -41,7 +42,7 @@
 
     <div class="field">
         <label>地點</label>
-        <input type="text" id="location" placeholder="貼上 Google 地圖資訊" oninput="handleLocationInput()">
+        <input type="text" id="location" placeholder="貼上地圖資訊或輸入地址" oninput="handleLocationInput()">
         <div id="map-box"><iframe id="map-iframe"></iframe></div>
     </div>
 
@@ -58,12 +59,14 @@
     </div>
 
     <button onclick="sendInvite()">分享邀請卡</button>
+    <p class="hint">若內容極長，轉發按鈕將僅保留前段文字以確保成功送出。</p>
 </div>
 
 <script>
     const LIFF_ID = "2009222789-j9OVLjbZ";
     let mapTimer;
 
+    // 地點輸入處理：顯示地圖但不主動刪除網址，留到發送時純化
     function handleLocationInput() {
         const val = document.getElementById('location').value;
         const cleaned = val.replace(/(https?:\/\/[^\s]+)/g, '').trim();
@@ -90,7 +93,10 @@
                 liff.login();
             } else {
                 const p = new URLSearchParams(window.location.search);
-                const getParam = (k) => { let v = p.get(k); return (v && v!=="undefined") ? decodeURIComponent(v) : ""; };
+                const getParam = (k) => { 
+                    let v = p.get(k); 
+                    return (v && v !== "undefined" && v !== "null") ? decodeURIComponent(v) : ""; 
+                };
 
                 document.getElementById('title').value = getParam('t');
                 document.getElementById('date').value = getParam('d');
@@ -106,7 +112,7 @@
                 }
                 if (document.getElementById('location').value) handleLocationInput();
             }
-        } catch (e) { console.error(e); }
+        } catch (e) { console.error("LIFF Init Error", e); }
     }
 
     function toggleLineId() {
@@ -117,20 +123,22 @@
         const t = document.getElementById('title').value || "行程邀請";
         const d = document.getElementById('date').value;
         const s = document.getElementById('time').value;
-        // 抓地點時強制過濾掉網址
+        
+        // 核心：純化地點（移除網址）
         const fullL = document.getElementById('location').value.replace(/(https?:\/\/[^\s]+)/g, '').trim();
         const fullN = document.getElementById('note').value || "";
-        const uid = document.getElementById('useMyLine').checked ? document.getElementById('lineid').value : "";
+        const uid = document.getElementById('lineid').value.trim();
+        const isWithId = document.getElementById('useMyLine').checked && uid;
 
-        if (!d || !s) return alert("請填寫時間");
+        if (!d || !s) return alert("請填寫日期與時間");
+
+        // 物理字數鎖定：轉發連結僅保留極短文字，防止網址過長送不出去
+        const shortL = fullL.substring(0, 15);
+        const shortN = fullN.substring(0, 15);
+        const liffUrl = `https://liff.line.me/${LIFF_ID}?t=${encodeURIComponent(t.substring(0,10))}&d=${d}&s=${s}&l=${encodeURIComponent(shortL)}&n=${encodeURIComponent(shortN)}&uid=${encodeURIComponent(uid)}`;
 
         const start = (d + 'T' + s).replace(/-|:/g, "") + "00";
         const calUrl = `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(t)}&dates=${start}/${start}&location=${encodeURIComponent(fullL)}&details=${encodeURIComponent(fullN)}`;
-        
-        // 極限截斷轉發網址參數，確保 100% 送出
-        const shortL = fullL.substring(0, 20);
-        const shortN = fullN.substring(0, 30);
-        const liffUrl = `https://liff.line.me/${LIFF_ID}?t=${encodeURIComponent(t)}&d=${d}&s=${s}&l=${encodeURIComponent(shortL)}&n=${encodeURIComponent(shortN)}&uid=${encodeURIComponent(uid)}`;
 
         const flexContents = {
             "type": "bubble",
@@ -154,7 +162,7 @@
             "footer": {
                 "type": "box", "layout": "vertical", "spacing": "sm", "contents": [
                     { "type": "button", "style": "primary", "color": "#00b900", "action": { "type": "uri", "label": "加入 Google/iOS 日曆", "uri": calUrl }},
-                    ...(uid ? [{ "type": "button", "style": "secondary", "color": "#eeeeee", "action": { "type": "uri", "label": "👤 聯繫發訊人", "uri": `https://line.me/ti/p/~${uid}` }}] : []),
+                    ...(isWithId ? [{ "type": "button", "style": "secondary", "color": "#eeeeee", "action": { "type": "uri", "label": "👤 聯繫發訊人", "uri": `https://line.me/ti/p/~${uid}` }}] : []),
                     { "type": "button", "style": "link", "height": "sm", "action": { "type": "uri", "label": "轉發 / 修改行程", "uri": liffUrl }}
                 ]
             }
@@ -164,7 +172,7 @@
             const res = await liff.shareTargetPicker([ { "type": "flex", "altText": `📅 行程：${t}`, "contents": flexContents } ]);
             if (res) liff.closeWindow();
         } catch (err) {
-            alert("傳送失敗：內容太長或網址參數超過 LINE 限制，請縮減字數。");
+            alert("內容過多或 LINE ID 格式錯誤，請縮減文字後再試一次。");
         }
     }
     init();
