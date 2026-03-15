@@ -7,39 +7,28 @@
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
         :root { --primary: #00b900; --bg: #f8f9fa; }
-        body { font-family: -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif; background: var(--bg); padding: 15px; }
+        body { font-family: -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif; background: var(--bg); padding: 15px; margin: 0; }
         .card { background: white; padding: 24px; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); max-width: 450px; margin: auto; }
         h2 { color: var(--primary); font-size: 22px; margin-top: 0; display: flex; align-items: center; gap: 8px; }
         .field { margin-bottom: 18px; }
         label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 14px; color: #444; }
-        input { width: 100%; padding: 12px; border: 1.5px solid #eee; border-radius: 12px; box-sizing: border-box; font-size: 16px; }
+        input { width: 100%; padding: 12px; border: 1.5px solid #eee; border-radius: 12px; box-sizing: border-box; font-size: 16px; transition: 0.3s; }
         input:focus { outline: none; border-color: var(--primary); background: #fff; }
-        
-        /* 地圖區域 */
-        #map-box { width: 100%; height: 200px; background: #eee; border-radius: 12px; margin-top: 10px; display: none; overflow: hidden; }
+        #map-box { width: 100%; height: 200px; background: #eee; border-radius: 12px; margin-top: 10px; display: none; overflow: hidden; border: 1px solid #eee; }
         #map-box iframe { width: 100%; height: 100%; border: 0; }
-
-        .btn-group { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
-        button { 
-            width: 100%; padding: 16px; border: none; border-radius: 16px; 
-            font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.2s;
-        }
-        .btn-main { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(0,185,0,0.3); }
-        .btn-main:active { transform: scale(0.97); opacity: 0.9; }
-        
-        .hint { font-size: 12px; color: #999; text-align: center; line-height: 1.5; margin-top: 10px; }
+        button { width: 100%; padding: 16px; border: none; border-radius: 16px; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.2s; background: var(--primary); color: white; margin-top: 10px; }
+        button:active { transform: scale(0.97); opacity: 0.9; }
+        .hint { font-size: 12px; color: #999; text-align: center; margin-top: 15px; line-height: 1.6; }
     </style>
 </head>
 <body>
 
 <div class="card">
     <h2>𓃥 白六行事曆</h2>
-    
     <div class="field">
         <label>活動主題</label>
         <input type="text" id="title" placeholder="例如：臺北榮總門診">
     </div>
-
     <div class="field">
         <label>時間</label>
         <div style="display: flex; gap: 8px;">
@@ -47,22 +36,16 @@
             <input type="time" id="time">
         </div>
     </div>
-
     <div class="field">
-        <label>地點 (輸入地址會自動更新地圖)</label>
-        <input type="text" id="location" placeholder="輸入地點，如：臺北榮總" onkeyup="debouncedMap()">
-        <div id="map-box">
-            <iframe id="map-iframe" src=""></iframe>
-        </div>
+        <label>地點</label>
+        <input type="text" id="location" placeholder="輸入地址後自動更新地圖" onkeyup="debouncedMap()">
+        <div id="map-box"><iframe id="map-iframe"></iframe></div>
     </div>
-
-    <div class="btn-group">
-        <button class="btn-main" onclick="sendInvite()">分享給好友 / 群組</button>
-    </div>
-
+    <button onclick="sendInvite()">分享給好友 / 群組</button>
     <div class="hint">
-        送出卡片後，LIFF 會關閉並停留在聊天室。<br>
-        此時請點擊 LINE 的 <b>「+」>「檔案」</b> 上傳附件。
+        <b>💡 小提示：</b><br>
+        1. 送出後，請在對話框點擊 <b>「+」>「檔案」</b> 上傳附件。<br>
+        2. 收件者可點擊卡片上的按鈕同步至 Google/iOS 日曆。
     </div>
 </div>
 
@@ -74,64 +57,66 @@
         try {
             await liff.init({ liffId: LIFF_ID });
             if (!liff.isLoggedIn()) liff.login();
-        } catch (e) { console.log(e); }
+            const params = new URLSearchParams(window.location.search);
+            if (params.has('t')) document.getElementById('title').value = params.get('t');
+            if (params.has('d')) document.getElementById('date').value = params.get('d');
+            if (params.has('s')) document.getElementById('time').value = params.get('s');
+            if (params.has('l')) {
+                document.getElementById('location').value = params.get('l');
+                debouncedMap();
+            }
+        } catch (e) { console.log("Init Error:", e); }
     }
 
-    // 地圖跳轉邏輯
     function debouncedMap() {
         clearTimeout(mapTimer);
         mapTimer = setTimeout(() => {
             const loc = document.getElementById('location').value;
             const box = document.getElementById('map-box');
-            const iframe = document.getElementById('map-iframe');
             if (loc.trim().length > 1) {
                 box.style.display = "block";
-                // 使用 Google Maps Embed 穩定版網址
-                iframe.src = `https://maps.google.com/maps?q=${encodeURIComponent(loc)}&hl=zh-TW&z=16&output=embed`;
-            } else {
-                box.style.display = "none";
+                document.getElementById('map-iframe').src = `https://www.google.com/maps/embed/v1/place?key=YOUR_API_KEY_OR_FREE_LINK&q=${encodeURIComponent(loc)}&output=embed`;
+                // 註：若無 API Key，下方為免費替代方案
+                document.getElementById('map-iframe').src = `https://maps.google.com/maps?q=${encodeURIComponent(loc)}&hl=zh-TW&z=16&output=embed`;
             }
         }, 800);
     }
 
     async function sendInvite() {
-        const title = document.getElementById('title').value || "白六行程";
-        const date = document.getElementById('date').value;
-        const time = document.getElementById('time').value;
-        const location = document.getElementById('location').value || "地點未定";
+        const t = document.getElementById('title').value || "白六行程";
+        const d = document.getElementById('date').value;
+        const s = document.getElementById('time').value;
+        const l = document.getElementById('location').value || "地點未定";
 
-        if (!date || !time) return alert("請填寫時間");
+        if (!d || !s) return alert("請填寫日期與時間");
 
-        // 修正 Google 日曆連結編碼，解決亂碼問題
-        const start = (date + 'T' + time).replace(/-|:/g, "") + "00";
-        const calUrl = `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${start}/${start}&location=${encodeURIComponent(location)}&details=${encodeURIComponent("附件請參考下方訊息。")}`;
+        const start = (d + 'T' + s).replace(/-|:/g, "") + "00";
+        const calUrl = `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(t)}&dates=${start}/${start}&location=${encodeURIComponent(l)}&details=${encodeURIComponent("附件請參考下方訊息。")}`;
+        const liffUrl = `https://liff.line.me/${LIFF_ID}?t=${encodeURIComponent(t)}&d=${d}&s=${s}&l=${encodeURIComponent(l)}`;
 
         const flex = {
             "type": "flex",
-            "altText": `📅 邀請：${title}`,
+            "altText": `📅 邀請：${t}`,
             "contents": {
                 "type": "bubble",
                 "body": {
                     "type": "box", "layout": "vertical", "contents": [
                         { "type": "text", "text": "𓃥 白六行事曆", "weight": "bold", "color": "#00b900", "size": "sm" },
-                        { "type": "text", "text": title, "weight": "bold", "size": "xl", "margin": "md" },
+                        { "type": "text", "text": t, "weight": "bold", "size": "xl", "margin": "md" },
                         { "type": "box", "layout": "vertical", "margin": "lg", "spacing": "sm", "contents": [
-                            { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [
-                                { "type": "text", "text": "時間", "color": "#aaaaaa", "size": "sm", "flex": 1 },
-                                { "type": "text", "text": `${date} ${time}`, "color": "#666666", "size": "sm", "flex": 4, "wrap": true }
-                            ]},
-                            { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [
-                                { "type": "text", "text": "地點", "color": "#aaaaaa", "size": "sm", "flex": 1 },
-                                { "type": "text", "text": location, "color": "#666666", "size": "sm", "flex": 4, "wrap": true }
-                            ]}
+                            { "type": "text", "text": `📅 ${d} ${s}`, "color": "#666666", "size": "sm" },
+                            { "type": "text", "text": `📍 ${l}`, "color": "#666666", "size": "sm", "wrap": true }
                         ]},
-                        { "type": "text", "text": "📎 附件檔案請見下方", "size": "xxs", "color": "#aaaaaa", "margin": "xl", "style": "italic" }
+                        { "type": "text", "text": "📎 附件檔案請參考下方", "size": "xxs", "color": "#aaaaaa", "margin": "xl", "style": "italic" }
                     ]
                 },
                 "footer": {
-                    "type": "box", "layout": "vertical", "contents": [
+                    "type": "box", "layout": "vertical", "spacing": "sm", "contents": [
                         { "type": "button", "style": "primary", "color": "#00b900", "action": {
-                            "type": "uri", "label": "一鍵存入 Google 行事曆", "uri": calUrl
+                            "type": "uri", "label": "加入 Google/iOS 日曆", "uri": calUrl
+                        }},
+                        { "type": "button", "style": "link", "color": "#aaaaaa", "action": {
+                            "type": "uri", "label": "轉發/修改此行程", "uri": liffUrl
                         }}
                     ]
                 }
@@ -139,14 +124,10 @@
         };
 
         try {
-            // shareTargetPicker 支援分享給多個好友或群組
             const res = await liff.shareTargetPicker([flex]);
             if (res) liff.closeWindow();
-        } catch (err) {
-            alert("請確認 LINE 開發者後台已開啟 shareTargetPicker 權限。");
-        }
+        } catch (err) { alert("分享失敗，請檢查權限設定。"); }
     }
-
     init();
 </script>
 </body>
