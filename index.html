@@ -1,41 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>𓃥白六行事曆</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+        :root { --primary: #00b900; --bg: #f8f9fa; }
+        body { font-family: -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif; background: var(--bg); padding: 15px; margin: 0; }
+        .card { background: white; padding: 24px; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); max-width: 450px; margin: auto; }
+        h2 { color: var(--primary); font-size: 20px; margin-top: 0; display: flex; align-items: center; gap: 8px; }
+        .field { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 14px; color: #444; }
+        input, textarea { width: 100%; padding: 12px; border: 1.5px solid #eee; border-radius: 12px; box-sizing: border-box; font-size: 16px; font-family: inherit; }
+        textarea { height: 80px; resize: none; }
+        .checkbox-group { display: flex; align-items: center; gap: 8px; margin: 10px 0; font-size: 14px; color: #666; cursor: pointer; }
+        #map-box { width: 100%; height: 200px; border-radius: 16px; margin-top: 10px; display: none; overflow: hidden; border: 1px solid #eee; position: relative; }
+        #map-iframe { width: 100%; height: 100%; border: 0; }
+        button { width: 100%; padding: 16px; border: none; border-radius: 16px; font-size: 18px; font-weight: bold; background: var(--primary); color: white; cursor: pointer; margin-top: 10px; }
+        button:active { opacity: 0.8; transform: scale(0.98); }
+        .hint { font-size: 11px; color: #aaa; text-align: center; margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>𓃥 白六行事曆</h2>
+    
+    <div class="field">
+        <label>活動主題</label>
+        <input type="text" id="title" placeholder="活動名稱">
+    </div>
+
+    <div class="field">
+        <label>時間</label>
+        <div style="display: flex; gap: 8px;">
+            <input type="date" id="date">
+            <input type="time" id="time">
+        </div>
+    </div>
+
+    <div class="field">
+        <label>地點</label>
+        <input type="text" id="location" placeholder="貼上 Google 地圖分享資訊" oninput="handleLocationInput()">
+        <div id="map-box"><iframe id="map-iframe"></iframe></div>
+    </div>
+
+    <div class="field">
+        <label>備註</label>
+        <textarea id="note" placeholder="提醒事項..."></textarea>
+    </div>
+
+    <div class="field">
+        <label class="checkbox-group">
+            <input type="checkbox" id="useMyLine" style="width: auto;" onchange="toggleLineId()"> 附上我的 LINE 聯絡連結
+        </label>
+        <input type="text" id="lineid" placeholder="請輸入您的 LINE ID" style="display: none;">
+    </div>
+
+    <button onclick="sendInvite()">分享邀請卡</button>
+</div>
+
 <script>
-async function sendInvite() {
-    // ... 前段取得變數與安全截斷邏輯不變 ...
+    const LIFF_ID = "2009222789-j9OVLjbZ";
+    let mapTimer;
 
-    const flexContents = {
-        "type": "bubble",
-        "body": {
-            "type": "box",
-            "layout": "vertical",
-            "contents": [
-                { "type": "text", "text": "𓃥 白六行事曆", "weight": "bold", "color": "#00b900", "size": "sm" },
-                { "type": "text", "text": t, "weight": "bold", "size": "xl", "margin": "md", "wrap": true },
-                { "type": "separator", "margin": "lg" },
-                { "type": "box", "layout": "vertical", "margin": "lg", "spacing": "sm", "contents": [
-                    { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [
-                        { "type": "icon", "url": "https://cdn-icons-png.flaticon.com/512/2838/2838779.png", "size": "sm" },
-                        { "type": "text", "text": `${d} ${s}`, "wrap": true, "color": "#666666", "size": "sm", "flex": 5 }
-                    ]},
-                    { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [
-                        { "type": "icon", "url": "https://cdn-icons-png.flaticon.com/512/1865/1865269.png", "size": "sm" },
-                        { "type": "text", "text": l, "wrap": true, "color": "#666666", "size": "sm", "flex": 5 }
-                    ]}
-                ]},
-                n ? { "type": "box", "layout": "vertical", "margin": "lg", "contents": [
-                    { "type": "text", "text": "備註事項", "size": "xs", "color": "#aaaaaa", "bold": true },
-                    { "type": "text", "text": n, "margin": "xs", "size": "sm", "color": "#333333", "wrap": true }
-                ]} : { "type": "spacer", "size": "xs" }
-            ]
-        },
-        "footer": {
-            "type": "box", "layout": "vertical", "spacing": "sm", "contents": [
-                { "type": "button", "style": "primary", "color": "#00b900", "action": { "type": "uri", "label": "加入 Google/iOS 日曆", "uri": calUrl }},
-                ...(uid ? [{ "type": "button", "style": "secondary", "color": "#eeeeee", "action": { "type": "uri", "label": "👤 聯繫發訊人", "uri": `https://line.me/ti/p/~${uid}` }}] : []),
-                { "type": "button", "style": "link", "height": "sm", "action": { "type": "uri", "label": "轉發 / 修改此行程", "uri": liffUrl }}
-            ]
+    // 智能處理地點輸入：同時支援地圖顯示與純化文字
+    function handleLocationInput() {
+        const input = document.getElementById('location');
+        let rawValue = input.value;
+        
+        // 提取地點名稱：移除網址，保留前面的文字
+        let cleaned = rawValue.replace(/(https?:\/\/[^\s]+)/g, '').trim();
+        
+        // 如果有變化且不為空，更新地圖預覽
+        if (cleaned.length > 1) {
+            updateMap(cleaned);
+        } else {
+            document.getElementById('map-box').style.display = "none";
         }
-    };
+    }
 
-    // ... 傳送邏輯不變 ...
-}
+    function updateMap(query) {
+        clearTimeout(mapTimer);
+        mapTimer = setTimeout(() => {
+            const box = document.getElementById('map-box');
+            const iframe = document.getElementById('map-iframe');
+            box.style.display = "block";
+            // 使用 Google Maps Embed API
+            iframe.src = `https://www.google.com/maps?q=${encodeURIComponent(query)}&output=embed&hl=zh-TW`;
+        }, 800);
+    }
+
+    // 發送前徹底純化
+    function getCleanedLocation() {
+        const val = document.getElementById('location').value;
+        return val.replace(/(https?:\/\/[^\s]+)/g, '').trim() || "地點未定";
+    }
+
+    async function init() {
+        try {
+            await liff.init({ liffId: LIFF_ID });
+            if (!liff.isLoggedIn()) {
+                liff.login();
+            } else {
+                const p = new URLSearchParams(window.location.search);
+                const getParam = (k) => { let v = p.get(k); return (v && v!=="undefined") ? decodeURIComponent(v) : ""; };
+
+                document.getElementById('title').value = getParam('t');
+                document.getElementById('date').value = getParam('d');
+                document.getElementById('time').value = getParam('s');
+                document.getElementById('location').value = getParam('l');
+                document.getElementById('note').value = getParam('n');
+                
+                const uid = getParam('uid');
+                if (uid) {
+                    document.getElementById('lineid').value = uid;
+                    document.getElementById('useMyLine').checked = true;
+                    toggleLineId();
+                }
+                if (document.getElementById('location').value) handleLocationInput();
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    function toggleLineId() {
+        document.getElementById('lineid').style.display = document.getElementById('useMyLine').checked ? "block" : "none";
+    }
+
+    async function sendInvite() {
+        const t = document.getElementById('title').value || "行程邀請";
+        const d = document.getElementById('date').value;
+        const s = document.getElementById('time').value;
+        const l = getCleanedLocation(); // 取得乾淨的地點文字
+        const n = document.getElementById('note').value || "";
+        const uid = document.getElementById('useMyLine').checked ? document.getElementById('lineid').value : "";
+
+        if (!d || !s) return alert("請選擇日期與時間");
+
+        const start = (d + 'T' + s).replace(/-|:/g, "") + "00";
+        const calUrl = `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(t)}&dates=${start}/${start}&location=${encodeURIComponent(l)}&details=${encodeURIComponent(n)}`;
+        
+        // 轉發連結 (保持參數精簡)
+        const liffUrl = `https://liff.line.me/${LIFF_ID}?t=${encodeURIComponent(t)}&d=${d}&s=${s}&l=${encodeURIComponent(l.substring(0,50))}&n=${encodeURIComponent(n.substring(0,80))}&uid=${encodeURIComponent(uid)}`;
+
+        const flexContents = {
+            "type": "bubble",
+            "body": {
+                "type": "box", "layout": "vertical", "contents": [
+                    { "type": "text", "text": "𓃥 白六行事曆", "weight": "bold", "color": "#00b900", "size": "sm" },
+                    { "type": "text", "text": t, "weight": "bold", "size": "xl", "margin": "md", "wrap": true },
+                    { "type": "box", "layout": "vertical", "margin": "lg", "spacing": "sm", "contents": [
+                        { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [
+                            { "type": "text", "text": "時間", "color": "#aaaaaa", "size": "sm", "flex": 1 },
+                            { "type": "text", "text": `${d} ${s}`, "wrap": true, "color": "#666666", "size": "sm", "flex": 4 }
+                        ]},
+                        { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [
+                            { "type": "text", "text": "地點", "color": "#aaaaaa", "size": "sm", "flex": 1 },
+                            { "type": "text", "text": l, "wrap": true, "color": "#666666", "size": "sm", "flex": 4 }
+                        ]}
+                    ]},
+                    n ? { "type": "text", "text": n, "margin": "lg", "size": "sm", "color": "#333333", "wrap": true, "fontStyle": "italic" } : { "type": "spacer", "size": "xs" }
+                ]
+            },
+            "footer": {
+                "type": "box", "layout": "vertical", "spacing": "sm", "contents": [
+                    { "type": "button", "style": "primary", "color": "#00b900", "action": { "type": "uri", "label": "加入 Google/iOS 日曆", "uri": calUrl }},
+                    ...(uid ? [{ "type": "button", "style": "secondary", "color": "#eeeeee", "action": { "type": "uri", "label": "👤 聯繫發訊人", "uri": `https://line.me/ti/p/~${uid}` }}] : []),
+                    { "type": "button", "style": "link", "height": "sm", "action": { "type": "uri", "label": "轉發 / 修改此行程", "uri": liffUrl }}
+                ]
+            }
+        };
+
+        try {
+            const res = await liff.shareTargetPicker([ { "type": "flex", "altText": `📅 行程：${t}`, "contents": flexContents } ]);
+            if (res) liff.closeWindow();
+        } catch (err) { alert("傳送失敗，請減少字數後再試一次。"); }
+    }
+    init();
 </script>
+</body>
+</html>
