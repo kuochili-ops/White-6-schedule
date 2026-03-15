@@ -7,29 +7,24 @@
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
         :root { --primary: #00b900; --bg: #f8f9fa; }
-        body { font-family: -apple-system, "PingFang TC", sans-serif; background-color: var(--bg); padding: 15px; margin: 0; }
-        .card { background: white; padding: 20px; border-radius: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); max-width: 450px; margin: auto; }
-        h2 { color: var(--primary); font-size: 22px; margin-bottom: 20px; display: flex; align-items: center; }
-        .field { margin-bottom: 18px; }
-        label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 14px; color: #444; }
-        input { width: 100%; padding: 14px; border: 1.5px solid #eee; border-radius: 12px; box-sizing: border-box; font-size: 16px; -webkit-appearance: none; }
-        input:focus { outline: none; border-color: var(--primary); background: #fff; }
+        body { font-family: -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif; background-color: var(--bg); padding: 15px; }
+        .card { background: white; padding: 24px; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); max-width: 450px; margin: auto; }
+        h2 { color: var(--primary); font-size: 22px; margin: 0 0 20px 0; display: flex; align-items: center; gap: 10px; }
+        .field { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; font-size: 14px; color: #444; }
+        input { width: 100%; padding: 14px; border: 1.5px solid #eee; border-radius: 12px; box-sizing: border-box; font-size: 16px; transition: 0.3s; }
+        input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,185,0,0.1); }
         
-        /* 地圖區域優化 */
-        #map-container { 
-            width: 100%; height: 180px; background: #f0f0f0; border-radius: 12px; 
-            margin-top: 10px; display: none; overflow: hidden; position: relative;
-        }
-        #map-img { width: 100%; height: 100%; object-fit: cover; }
-        .map-label { position: absolute; bottom: 5px; right: 5px; background: rgba(255,255,255,0.8); padding: 2px 6px; font-size: 10px; border-radius: 4px; }
+        /* 檔案導引區 */
+        .file-box { background: #fdfdfd; border: 2px dashed #e0e0e0; padding: 15px; border-radius: 12px; text-align: center; }
+        .file-hint { font-size: 13px; color: #666; line-height: 1.6; }
 
         button { 
             width: 100%; padding: 16px; background: var(--primary); color: white; 
             border: none; border-radius: 16px; font-size: 18px; font-weight: bold; 
-            cursor: pointer; margin-top: 10px; box-shadow: 0 4px 12px rgba(0,185,0,0.3);
+            cursor: pointer; margin-top: 15px;
         }
-        button:active { transform: scale(0.97); }
-        .footer-hint { text-align: center; font-size: 12px; color: #999; margin-top: 15px; line-height: 1.5; }
+        button:active { transform: scale(0.98); }
     </style>
 </head>
 <body>
@@ -39,11 +34,11 @@
     
     <div class="field">
         <label>活動主題</label>
-        <input type="text" id="title" placeholder="輸入名稱 (例如: 白六商務會議)">
+        <input type="text" id="title" placeholder="例如：白六專案會議">
     </div>
 
     <div class="field">
-        <label>時間</label>
+        <label>日期與時間</label>
         <div style="display: flex; gap: 8px;">
             <input type="date" id="date" style="flex: 1.5;">
             <input type="time" id="time" style="flex: 1;">
@@ -52,53 +47,30 @@
 
     <div class="field">
         <label>地點</label>
-        <input type="text" id="location" placeholder="輸入地點或地址" oninput="debounceMap()">
-        <div id="map-container">
-            <img id="map-img" src="" alt="地圖預覽">
-            <div class="map-label">Google Maps 預覽</div>
+        <input type="text" id="location" placeholder="輸入地址或場所名稱">
+    </div>
+
+    <div class="field">
+        <label>檔案附件說明</label>
+        <div class="file-box">
+            <p class="file-hint">
+                💡 <b>操作小秘訣：</b><br>
+                點擊下方送出後，請直接在 LINE 對話框點選 <b>「+」>「檔案」</b> 上傳您的本地文件。
+            </p>
         </div>
     </div>
 
-    <button onclick="sendInvite()">送出邀請卡</button>
-    
-    <div class="footer-hint">
-        送出卡片後，LIFF 會自動關閉<br>
-        您可以直接在對話框「上傳檔案」作為附件
-    </div>
+    <button onclick="sendInvite()">分享邀請並上傳檔案</button>
 </div>
 
 <script>
-    let mapTimer;
     const LIFF_ID = "2009222789-j9OVLjbZ";
 
     async function init() {
         try {
             await liff.init({ liffId: LIFF_ID });
             if (!liff.isLoggedIn()) liff.login();
-        } catch (e) { console.error(e); }
-    }
-
-    // 防止輸入太快導致地圖頻繁刷新
-    function debounceMap() {
-        clearTimeout(mapTimer);
-        mapTimer = setTimeout(updateMap, 800);
-    }
-
-    function updateMap() {
-        const loc = document.getElementById('location').value;
-        const container = document.getElementById('map-container');
-        const img = document.getElementById('map-img');
-        
-        if (loc.trim().length > 1) {
-            container.style.display = "block";
-            // 使用不用 Key 的簡易靜態地圖預覽連結 (透過 Google Search Static Map 服務)
-            const mapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(loc)}&zoom=15&size=600x300&maptype=roadmap&markers=color:red%7C${encodeURIComponent(loc)}&key=YOUR_API_KEY_OPTIONAL`;
-            // 注意：若無 API Key，我們改用 iframe 的另一種穩定寫法
-            img.src = `https://www.google.com/maps/embed/v1/place?key=請填入你的APIKEY&q=${encodeURIComponent(loc)}`; 
-            
-            // 簡易無 Key 替代方案：直接顯示搜尋連結預覽
-            img.parentElement.innerHTML = `<iframe width="100%" height="100%" frameborder="0" style="border:0" src="https://www.google.com/maps?q=${encodeURIComponent(loc)}&output=embed"></iframe>`;
-        }
+        } catch (e) { console.error("初始化失敗", e); }
     }
 
     async function sendInvite() {
@@ -107,11 +79,19 @@
         const time = document.getElementById('time').value;
         const location = document.getElementById('location').value || "地點未定";
 
-        if (!date || !time) { return alert("請選擇日期與時間"); }
+        if (!date || !time) return alert("請填寫完整的時間資訊");
 
-        // Google 行事曆連結
-        const gTime = (date + 'T' + time).replace(/-|:/g, "");
-        const calUrl = `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${gTime}00/${gTime}00&location=${encodeURIComponent(location)}&details=邀請您參與白六行事曆安排之行程。`;
+        // 修正中文亂碼問題：使用 URLSearchParams 或正確的 encodeURIComponent
+        // 確保日期格式為 YYYYMMDDTHHMMSS
+        const startDateTime = (date + 'T' + time).replace(/-|:/g, "") + "00";
+        const endDateTime = startDateTime; // 預設同時間，或自行加 1 小時
+
+        // 這是 Google Calendar 的標準跳轉格式
+        const calUrl = `https://www.google.com/calendar/render?action=TEMPLATE` +
+                       `&text=${encodeURIComponent(title)}` +
+                       `&dates=${startDateTime}/${endDateTime}` +
+                       `&location=${encodeURIComponent(location)}` +
+                       `&details=${encodeURIComponent("邀請您參加行程。附件檔案請參考對話框下方。")}`;
 
         const flex = {
             "type": "flex",
@@ -125,20 +105,21 @@
                         { "type": "box", "layout": "vertical", "margin": "lg", "spacing": "sm", "contents": [
                             { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [
                                 { "type": "text", "text": "時間", "color": "#aaaaaa", "size": "sm", "flex": 1 },
-                                { "type": "text", "text": `${date} ${time}`, "wrap": true, "color": "#666666", "size": "sm", "flex": 4 }
+                                { "type": "text", "text": `${date} ${time}`, "color": "#666666", "size": "sm", "flex": 4, "wrap": true }
                             ]},
                             { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [
                                 { "type": "text", "text": "地點", "color": "#aaaaaa", "size": "sm", "flex": 1 },
-                                { "type": "text", "text": location, "wrap": true, "color": "#666666", "size": "sm", "flex": 4 }
+                                { "type": "text", "text": location, "color": "#666666", "size": "sm", "flex": 4, "wrap": true }
                             ]}
                         ]},
-                        { "type": "text", "text": "📎 附件檔案請見下方訊息", "size": "xxs", "color": "#b0b0b0", "margin": "xl", "style": "italic" }
+                        { "type": "separator", "margin": "xl" },
+                        { "type": "text", "text": "📎 附件檔案正在下方上傳中...", "size": "xs", "color": "#999999", "margin": "md", "style": "italic" }
                     ]
                 },
                 "footer": {
                     "type": "box", "layout": "vertical", "contents": [
                         { "type": "button", "style": "primary", "color": "#00b900", "action": {
-                            "type": "uri", "label": "一鍵存入 Google 行事曆", "uri": calUrl
+                            "type": "uri", "label": "加入我的行事曆", "uri": calUrl
                         }}
                     ]
                 }
@@ -147,9 +128,12 @@
 
         try {
             const res = await liff.shareTargetPicker([flex]);
-            if (res) liff.closeWindow();
+            if (res) {
+                // 分享成功後關閉視窗，讓使用者直接回到對話框貼檔案
+                liff.closeWindow();
+            }
         } catch (err) {
-            alert("傳送失敗。請確認後台 shareTargetPicker 權限已開啟。");
+            alert("傳送失敗，請確認 LINE Developers 後台權限。");
         }
     }
 
