@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>約會邀請傳送器</title>
+    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background-color: #f4f7f6; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h2 { color: #00b900; margin-top: 0; }
+        .field { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background-color: #00b900; color: white; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; }
+        button:disabled { background-color: #ccc; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>發送約會邀請</h2>
+    <div class="field">
+        <label>活動名稱</label>
+        <input type="text" id="title" placeholder="例如：浪漫晚餐">
+    </div>
+    <div class="field">
+        <label>日期</label>
+        <input type="date" id="date">
+    </div>
+    <div class="field">
+        <label>時間</label>
+        <input type="time" id="time">
+    </div>
+    <div class="field">
+        <label>地點</label>
+        <input type="text" id="location" placeholder="餐廳名稱或地址">
+    </div>
+    <button id="sendBtn" onclick="sendInvite()">分享給好友</button>
+</div>
+
+<script>
+    // 初始化 LIFF
+    async function initLIFF() {
+        try {
+            await liff.init({ liffId: "YOUR_LIFF_ID" }); // 請替換為你的 LIFF ID
+            if (!liff.isLoggedIn()) {
+                liff.login();
+            }
+        } catch (err) {
+            console.error("LIFF 初始化失敗", err);
+        }
+    }
+
+    function formatGoogleDate(dateStr, timeStr) {
+        // 將日期時間轉換為 Google 接受的格式: YYYYMMDDTHHmmSSZ
+        const dt = new Date(`${dateStr}T${timeStr}`);
+        return dt.toISOString().replace(/-|:|\.\d\d\d/g, "");
+    }
+
+    async function sendInvite() {
+        const title = document.getElementById('title').value;
+        const date = document.getElementById('date').value;
+        const time = document.getElementById('time').value;
+        const location = document.getElementById('location').value;
+
+        if (!title || !date || !time) {
+            alert("請填寫完整資訊");
+            return;
+        }
+
+        const gTime = formatGoogleDate(date, time);
+        // 生成 Google 行事曆連結
+        const calendarUrl = `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${gTime}/${gTime}&details=由LIFF預約&location=${encodeURIComponent(location)}`;
+
+        const flexMessage = {
+            type: "flex",
+            altText: `📅 約會邀請：${title}`,
+            contents: {
+                "type": "bubble",
+                "body": {
+                    "type": "box",
+                    "layout": "vertical",
+                    "contents": [
+                        { "type": "text", "text": "DATE INVITATION", "weight": "bold", "color": "#00b900", "size": "sm" },
+                        { "type": "text", "text": title, "weight": "bold", "size": "xl", "margin": "md" },
+                        { "type": "separator", "margin": "lg" },
+                        { "type": "box", "layout": "vertical", "margin": "lg", "spacing": "sm", "contents": [
+                            { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [
+                                { "type": "text", "text": "時間", "color": "#aaaaaa", "size": "sm", "flex": 1 },
+                                { "type": "text", "text": `${date} ${time}`, "wrap": true, "color": "#666666", "size": "sm", "flex": 5 }
+                            ]},
+                            { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [
+                                { "type": "text", "text": "地點", "color": "#aaaaaa", "size": "sm", "flex": 1 },
+                                { "type": "text", "text": location, "wrap": true, "color": "#666666", "size": "sm", "flex": 5 }
+                            ]}
+                        ]}
+                    ]
+                },
+                "footer": {
+                    "type": "box",
+                    "layout": "vertical",
+                    "spacing": "sm",
+                    "contents": [
+                        { "type": "button", "style": "primary", "color": "#00b900", "action": {
+                            "type": "uri", "label": "加入 Google 行事曆", "uri": calendarUrl
+                        }}
+                    ]
+                }
+            }
+        };
+
+        try {
+            // 使用 shareTargetPicker 讓使用者選擇好友或群組
+            if (liff.isApiAvailable('shareTargetPicker')) {
+                const res = await liff.shareTargetPicker([flexMessage]);
+                if (res) {
+                    liff.closeWindow();
+                }
+            }
+        } catch (error) {
+            console.error("傳送失敗", error);
+        }
+    }
+
+    initLIFF();
+</script>
+</body>
+</html>
