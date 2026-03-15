@@ -12,11 +12,12 @@
         h2 { color: var(--primary); font-size: 22px; margin-top: 0; display: flex; align-items: center; gap: 8px; }
         .field { margin-bottom: 18px; }
         label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 14px; color: #444; }
-        input { width: 100%; padding: 12px; border: 1.5px solid #eee; border-radius: 12px; box-sizing: border-box; font-size: 16px; transition: 0.3s; }
-        input:focus { outline: none; border-color: var(--primary); background: #fff; }
-        #map-box { width: 100%; height: 200px; background: #eee; border-radius: 12px; margin-top: 10px; display: none; overflow: hidden; border: 1px solid #eee; }
+        input, textarea { width: 100%; padding: 12px; border: 1.5px solid #eee; border-radius: 12px; box-sizing: border-box; font-size: 16px; font-family: inherit; }
+        textarea { resize: vertical; min-height: 80px; }
+        input:focus, textarea:focus { outline: none; border-color: var(--primary); background: #fff; }
+        #map-box { width: 100%; height: 180px; background: #eee; border-radius: 12px; margin-top: 10px; display: none; overflow: hidden; border: 1px solid #eee; }
         #map-box iframe { width: 100%; height: 100%; border: 0; }
-        button { width: 100%; padding: 16px; border: none; border-radius: 16px; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.2s; background: var(--primary); color: white; margin-top: 10px; }
+        button { width: 100%; padding: 16px; border: none; border-radius: 16px; font-size: 18px; font-weight: bold; cursor: pointer; background: var(--primary); color: white; margin-top: 10px; }
         button:active { transform: scale(0.97); opacity: 0.9; }
         .hint { font-size: 12px; color: #999; text-align: center; margin-top: 15px; line-height: 1.6; }
     </style>
@@ -38,15 +39,15 @@
     </div>
     <div class="field">
         <label>地點</label>
-        <input type="text" id="location" placeholder="輸入地址後自動更新地圖" onkeyup="debouncedMap()">
+        <input type="text" id="location" placeholder="輸入地點" onkeyup="debouncedMap()">
         <div id="map-box"><iframe id="map-iframe"></iframe></div>
     </div>
-    <button onclick="sendInvite()">分享給好友 / 群組</button>
-    <div class="hint">
-        <b>💡 小提示：</b><br>
-        1. 送出後，請在對話框點擊 <b>「+」>「檔案」</b> 上傳附件。<br>
-        2. 收件者可點擊卡片上的按鈕同步至 Google/iOS 日曆。
+    <div class="field">
+        <label>備註 (會同步存入行事曆)</label>
+        <textarea id="note" placeholder="例如：診號 12 號，記得帶健保卡"></textarea>
     </div>
+    <button onclick="sendInvite()">分享給好友 / 群組</button>
+    <div class="hint">送出後，卡片會包含地點預覽與備註內容。</div>
 </div>
 
 <script>
@@ -58,6 +59,7 @@
             await liff.init({ liffId: LIFF_ID });
             if (!liff.isLoggedIn()) liff.login();
             const params = new URLSearchParams(window.location.search);
+            // 轉發自動填入邏輯（含備註 n）
             if (params.has('t')) document.getElementById('title').value = params.get('t');
             if (params.has('d')) document.getElementById('date').value = params.get('d');
             if (params.has('s')) document.getElementById('time').value = params.get('s');
@@ -65,7 +67,8 @@
                 document.getElementById('location').value = params.get('l');
                 debouncedMap();
             }
-        } catch (e) { console.log("Init Error:", e); }
+            if (params.has('n')) document.getElementById('note').value = params.get('n');
+        } catch (e) { console.log(e); }
     }
 
     function debouncedMap() {
@@ -75,8 +78,8 @@
             const box = document.getElementById('map-box');
             if (loc.trim().length > 1) {
                 box.style.display = "block";
-                document.getElementById('map-iframe').src = `https://www.google.com/maps/embed/v1/place?key=YOUR_API_KEY_OR_FREE_LINK&q=${encodeURIComponent(loc)}&output=embed`;
-                // 註：若無 API Key，下方為免費替代方案
+                document.getElementById('map-iframe').src = `https://www.google.com/maps/embed/v1/place?key=YOUR_API_KEY&q=${encodeURIComponent(loc)}&language=zh-TW`;
+                // 若無 Key，使用預覽版網址
                 document.getElementById('map-iframe').src = `https://maps.google.com/maps?q=${encodeURIComponent(loc)}&hl=zh-TW&z=16&output=embed`;
             }
         }, 800);
@@ -87,12 +90,15 @@
         const d = document.getElementById('date').value;
         const s = document.getElementById('time').value;
         const l = document.getElementById('location').value || "地點未定";
+        const n = document.getElementById('note').value || "";
 
         if (!d || !s) return alert("請填寫日期與時間");
 
         const start = (d + 'T' + s).replace(/-|:/g, "") + "00";
-        const calUrl = `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(t)}&dates=${start}/${start}&location=${encodeURIComponent(l)}&details=${encodeURIComponent("附件請參考下方訊息。")}`;
-        const liffUrl = `https://liff.line.me/${LIFF_ID}?t=${encodeURIComponent(t)}&d=${d}&s=${s}&l=${encodeURIComponent(l)}`;
+        // 將備註加入 Google 日曆細節中
+        const calUrl = `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(t)}&dates=${start}/${start}&location=${encodeURIComponent(l)}&details=${encodeURIComponent(n + "\n\n(由白六行事曆產生)")}`;
+        // 轉發連結也帶上備註參數
+        const liffUrl = `https://liff.line.me/${LIFF_ID}?t=${encodeURIComponent(t)}&d=${d}&s=${s}&l=${encodeURIComponent(l)}&n=${encodeURIComponent(n)}`;
 
         const flex = {
             "type": "flex",
@@ -107,17 +113,14 @@
                             { "type": "text", "text": `📅 ${d} ${s}`, "color": "#666666", "size": "sm" },
                             { "type": "text", "text": `📍 ${l}`, "color": "#666666", "size": "sm", "wrap": true }
                         ]},
-                        { "type": "text", "text": "📎 附件檔案請參考下方", "size": "xxs", "color": "#aaaaaa", "margin": "xl", "style": "italic" }
+                        n ? { "type": "text", "text": n, "margin": "md", "size": "sm", "color": "#333333", "wrap": true, "fontStyle": "italic" } : { "type": "spacer", "size": "xs" },
+                        { "type": "text", "text": "📎 附件檔案請見下方", "size": "xxs", "color": "#aaaaaa", "margin": "xl" }
                     ]
                 },
                 "footer": {
                     "type": "box", "layout": "vertical", "spacing": "sm", "contents": [
-                        { "type": "button", "style": "primary", "color": "#00b900", "action": {
-                            "type": "uri", "label": "加入 Google/iOS 日曆", "uri": calUrl
-                        }},
-                        { "type": "button", "style": "link", "color": "#aaaaaa", "action": {
-                            "type": "uri", "label": "轉發/修改此行程", "uri": liffUrl
-                        }}
+                        { "type": "button", "style": "primary", "color": "#00b900", "action": { "type": "uri", "label": "加入 Google/iOS 日曆", "uri": calUrl }},
+                        { "type": "button", "style": "link", "color": "#aaaaaa", "action": { "type": "uri", "label": "轉發此行程", "uri": liffUrl }}
                     ]
                 }
             }
@@ -126,7 +129,7 @@
         try {
             const res = await liff.shareTargetPicker([flex]);
             if (res) liff.closeWindow();
-        } catch (err) { alert("分享失敗，請檢查權限設定。"); }
+        } catch (err) { alert("分享失敗"); }
     }
     init();
 </script>
