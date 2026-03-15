@@ -1,189 +1,50 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>𓃥白六行事曆</title>
-    <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    <style>
-        :root {
-            --primary-color: #00b900;
-            --bg-color: #f8f9fa;
-        }
-        body { font-family: -apple-system, "Noto Sans TC", sans-serif; padding: 20px; background-color: var(--bg-color); color: #333; }
-        .card { background: white; padding: 24px; border-radius: 20px; box-shadow: 0 8px 24px rgba(0,0,0,0.05); max-width: 400px; margin: auto; }
-        h2 { color: var(--primary-color); margin: 0 0 20px 0; font-size: 24px; display: flex; align-items: center; }
-        .field { margin-bottom: 16px; }
-        label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 14px; }
-        input { width: 100%; padding: 12px; border: 1.5px solid #eee; border-radius: 10px; box-sizing: border-box; font-size: 16px; transition: border 0.3s; }
-        input:focus { outline: none; border-color: var(--primary-color); }
-        
-        /* 地圖預覽區 */
-        #map-preview {
-            width: 100%;
-            height: 150px;
-            background: #eee;
-            border-radius: 10px;
-            margin-top: 8px;
-            display: none; /* 初始隱藏 */
-            border: none;
-        }
-
-        .upload-area {
-            border: 2px dashed #ddd;
-            padding: 10px;
-            text-align: center;
-            border-radius: 10px;
-            font-size: 12px;
-            color: #888;
-            background: #fafafa;
-        }
-
-        button { 
-            width: 100%; padding: 14px; 
-            background-color: var(--primary-color); 
-            color: white; border: none; border-radius: 12px; 
-            font-size: 16px; font-weight: bold; cursor: pointer; 
-            margin-top: 10px; transition: opacity 0.2s;
-        }
-        button:active { opacity: 0.8; }
-    </style>
-</head>
-<body>
-
-<div class="card">
-    <h2>𓃥 白六行事曆</h2>
-    
-    <div class="field">
-        <label>活動名稱</label>
-        <input type="text" id="title" placeholder="要做什麼呢？">
-    </div>
-
-    <div class="field">
-        <label>日期</label>
-        <input type="date" id="date">
-    </div>
-
-    <div class="field">
-        <label>時間</label>
-        <input type="time" id="time">
-    </div>
-
-    <div class="field">
-        <label>地點 (鍵入後自動定位)</label>
-        <input type="text" id="location" placeholder="輸入餐廳或辦公室地址" oninput="updateMap()">
-        <iframe id="map-preview" allowfullscreen loading="lazy"></iframe>
-    </div>
-
-    <div class="field">
-        <label>附檔連結 (可貼上雲端檔案網址)</label>
-        <input type="url" id="fileUrl" placeholder="https://drive.google.com/...">
-        <div class="upload-area">※ 提示：請先將檔案上傳至雲端並開啟權限後貼上連結</div>
-    </div>
-
-    <button id="sendBtn" onclick="sendInvite()">分享邀請卡</button>
-</div>
-
 <script>
-    // 請務必替換為你的 LIFF ID
-    const MY_LIFF_ID = "YOUR_LIFF_ID"; 
-
-    async function initLIFF() {
-        try {
-            await liff.init({ liffId: MY_LIFF_ID });
-            if (!liff.isLoggedIn()) {
-                liff.login();
-            }
-        } catch (err) {
-            console.error("LIFF 初始化失敗", err);
-        }
-    }
-
-    // 更新地圖預覽
-    function updateMap() {
-        const loc = document.getElementById('location').value;
-        const mapFrame = document.getElementById('map-preview');
-        if (loc.length > 2) {
-            mapFrame.style.display = "block";
-            // 使用 Google Maps Embed API (無需 Key 的簡易搜尋模式)
-            mapFrame.src = `https://maps.google.com/maps?q=${encodeURIComponent(loc)}&output=embed`;
-        } else {
-            mapFrame.style.display = "none";
-        }
-    }
-
-    function formatGoogleDate(dateStr, timeStr) {
-        const dt = new Date(`${dateStr}T${timeStr}`);
-        return dt.toISOString().replace(/-|:|\.\d\d\d/g, "");
-    }
-
     async function sendInvite() {
-        const title = document.getElementById('title').value;
-        const date = document.getElementById('date').value;
-        const time = document.getElementById('time').value;
-        const location = document.getElementById('location').value;
-        const fileUrl = document.getElementById('fileUrl').value;
+        // ... (取得 title, date, time, location 的邏輯不變) ...
 
-        if (!title || !date || !time) {
-            alert("請填寫基本時間資訊");
-            return;
-        }
+        const gTime = (date + 'T' + time).replace(/-|:/g, "");
+        const calendarUrl = `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${gTime}00/${gTime}00&location=${encodeURIComponent(location)}`;
 
-        const gTime = formatGoogleDate(date, time);
-        const calendarUrl = `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${gTime}/${gTime}&details=${encodeURIComponent('附檔/連結：' + (fileUrl || '無'))}&location=${encodeURIComponent(location)}`;
-
-        const flexMessage = {
+        const flexData = {
             type: "flex",
-            altText: `𓃥白六邀請：${title}`,
+            altText: `📅 收到邀請：${title}`,
             contents: {
                 "type": "bubble",
+                "header": {
+                    "type": "box", "layout": "vertical", "contents": [
+                        { "type": "text", "text": "𓃥 白六行事曆", "weight": "bold", "color": "#00b900" }
+                    ]
+                },
                 "body": {
-                    "type": "box",
-                    "layout": "vertical",
-                    "contents": [
-                        { "type": "text", "text": "𓃥 白六行事曆", "weight": "bold", "color": "#00b900", "size": "sm" },
-                        { "type": "text", "text": title, "weight": "bold", "size": "xl", "margin": "md" },
-                        { "type": "box", "layout": "vertical", "margin": "lg", "spacing": "sm", "contents": [
-                            { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [
-                                { "type": "text", "text": "📅", "flex": 1, "size": "sm" },
-                                { "type": "text", "text": `${date} ${time}`, "flex": 5, "size": "sm", "color": "#666666" }
-                            ]},
-                            { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [
-                                { "type": "text", "text": "📍", "flex": 1, "size": "sm" },
-                                { "type": "text", "text": location || "未定", "flex": 5, "size": "sm", "color": "#666666", "wrap": true }
-                            ]}
-                        ]}
+                    "type": "box", "layout": "vertical", "contents": [
+                        { "type": "text", "text": title, "weight": "bold", "size": "xl" },
+                        { "type": "text", "text": `⏰ ${date} ${time}`, "size": "sm", "margin": "md", "color": "#666666" },
+                        { "type": "text", "text": `📍 ${location}`, "size": "sm", "color": "#666666", "wrap": true },
+                        { "type": "separator", "margin": "lg" },
+                        { "type": "text", "text": "📎 相關附件已傳送至下方", "size": "xs", "color": "#aaaaaa", "margin": "md", "style": "italic" }
                     ]
                 },
                 "footer": {
-                    "type": "box",
-                    "layout": "vertical",
-                    "spacing": "sm",
-                    "contents": [
+                    "type": "box", "layout": "vertical", "contents": [
                         { "type": "button", "style": "primary", "color": "#00b900", "action": {
-                            "type": "uri", "label": "一鍵存入 Google 行事曆", "uri": calendarUrl
-                        }},
-                        fileUrl ? { "type": "button", "style": "link", "height": "sm", "action": {
-                            "type": "uri", "label": "查看附檔", "uri": fileUrl
-                        }} : { "type": "spacer", "size": "sm" }
+                            "type": "uri", "label": "一鍵存入行事曆", "uri": calendarUrl
+                        }}
                     ]
                 }
             }
         };
 
         try {
-            if (liff.isApiAvailable('shareTargetPicker')) {
-                const res = await liff.shareTargetPicker([flexMessage]);
-                if (res) liff.closeWindow();
-            } else {
-                alert("請確保在 LINE 手機版開啟，並已開啟權限");
+            // 執行分享
+            const res = await liff.shareTargetPicker([flexData]);
+            
+            if (res) {
+                // 分享成功後，提示使用者
+                alert("卡片已送出！現在您可以直接在聊天視窗中「上傳檔案」給對方了。");
+                liff.closeWindow();
             }
         } catch (error) {
-            alert("傳送失敗: " + error.message);
+            alert("錯誤：" + error.message);
         }
     }
-
-    initLIFF();
 </script>
-</body>
-</html>
