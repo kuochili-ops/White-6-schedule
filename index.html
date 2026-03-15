@@ -7,16 +7,18 @@
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
         :root { --primary: #00b900; --bg: #f8f9fa; }
-        body { font-family: -apple-system, "PingFang TC", sans-serif; background: var(--bg); padding: 15px; margin: 0; }
+        body { font-family: -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif; background: var(--bg); padding: 15px; margin: 0; }
         .card { background: white; padding: 24px; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); max-width: 450px; margin: auto; }
         h2 { color: var(--primary); font-size: 20px; margin-top: 0; display: flex; align-items: center; gap: 8px; }
         .field { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 14px; color: #444; }
-        input, textarea { width: 100%; padding: 12px; border: 1.5px solid #eee; border-radius: 12px; box-sizing: border-box; font-size: 16px; }
+        input, textarea { width: 100%; padding: 12px; border: 1.5px solid #eee; border-radius: 12px; box-sizing: border-box; font-size: 16px; font-family: inherit; }
+        textarea { height: 80px; resize: none; }
         .checkbox-group { display: flex; align-items: center; gap: 8px; margin: 10px 0; font-size: 14px; color: #666; cursor: pointer; }
         #map-box { width: 100%; height: 160px; border-radius: 12px; margin-top: 10px; display: none; overflow: hidden; border: 1px solid #eee; }
         button { width: 100%; padding: 16px; border: none; border-radius: 16px; font-size: 18px; font-weight: bold; background: var(--primary); color: white; cursor: pointer; margin-top: 10px; }
-        .hint { font-size: 11px; color: #aaa; text-align: center; margin-top: 15px; }
+        button:active { opacity: 0.8; transform: scale(0.98); }
+        .hint { font-size: 11px; color: #aaa; text-align: center; margin-top: 15px; line-height: 1.4; }
     </style>
 </head>
 <body>
@@ -45,7 +47,7 @@
 
     <div class="field">
         <label>備註</label>
-        <textarea id="note" style="height: 60px;" placeholder="備註事項"></textarea>
+        <textarea id="note" placeholder="提醒事項..."></textarea>
     </div>
 
     <div class="field">
@@ -56,6 +58,7 @@
     </div>
 
     <button onclick="sendInvite()">分享邀請卡</button>
+    <p class="hint">若內容極長，轉發時系統將自動保留前段重點。</p>
 </div>
 
 <script>
@@ -68,7 +71,6 @@
             if (!liff.isLoggedIn()) {
                 liff.login();
             } else {
-                // 轉發參數解析邏輯
                 const p = new URLSearchParams(window.location.search);
                 if (p.has('t')) document.getElementById('title').value = p.get('t');
                 if (p.has('d')) document.getElementById('date').value = p.get('d');
@@ -81,14 +83,14 @@
                 if (p.has('n')) document.getElementById('note').value = p.get('n');
                 if (p.has('uid')) {
                     const uid = p.get('uid');
-                    if (uid && uid !== "undefined" && uid !== "") {
+                    if (uid && uid !== "undefined") {
                         document.getElementById('lineid').value = uid;
                         document.getElementById('useMyLine').checked = true;
                         toggleLineId();
                     }
                 }
             }
-        } catch (e) { console.error(e); }
+        } catch (e) { console.error("LIFF Init Error", e); }
     }
 
     function toggleLineId() {
@@ -101,7 +103,7 @@
             const loc = document.getElementById('location').value;
             if (loc.trim().length > 1) {
                 document.getElementById('map-box').style.display = "block";
-                document.getElementById('map-iframe').src = `https://maps.google.com/maps?q=${encodeURIComponent(loc)}&output=embed&hl=zh-TW`;
+                document.getElementById('map-iframe').src = `https://www.google.com/maps?q=${encodeURIComponent(loc)}&output=embed&hl=zh-TW`;
             }
         }, 800);
     }
@@ -114,14 +116,17 @@
         const n = document.getElementById('note').value || "";
         const uid = document.getElementById('useMyLine').checked ? document.getElementById('lineid').value : "";
 
-        if (!d || !s) return alert("請填寫日期與時間");
+        if (!d || !s) return alert("請選擇日期與時間");
 
         const start = (d + 'T' + s).replace(/-|:/g, "") + "00";
+        
+        // 1. Google 日曆連結
         const calUrl = `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(t)}&dates=${start}/${start}&location=${encodeURIComponent(l)}&details=${encodeURIComponent(n)}`;
         
-        // 修正後的轉發連結 (含所有參數)
-        const liffUrl = `https://liff.line.me/${LIFF_ID}?t=${encodeURIComponent(t)}&d=${d}&s=${s}&l=${encodeURIComponent(l)}&n=${encodeURIComponent(n)}&uid=${encodeURIComponent(uid)}`;
-        const contactUrl = uid ? `https://line.me/ti/p/~${uid}` : "";
+        // 2. 轉發連結 (進行安全長度截斷)
+        const safeL = l.substring(0, 30);
+        const safeN = n.substring(0, 50);
+        const liffUrl = `https://liff.line.me/${LIFF_ID}?t=${encodeURIComponent(t)}&d=${d}&s=${s}&l=${encodeURIComponent(safeL)}&n=${encodeURIComponent(safeN)}&uid=${encodeURIComponent(uid)}`;
 
         const flexContents = {
             "type": "bubble",
@@ -145,16 +150,18 @@
             "footer": {
                 "type": "box", "layout": "vertical", "spacing": "sm", "contents": [
                     { "type": "button", "style": "primary", "color": "#00b900", "action": { "type": "uri", "label": "同步至手機日曆", "uri": calUrl }},
-                    ...(uid ? [{ "type": "button", "style": "secondary", "color": "#eeeeee", "action": { "type": "uri", "label": "👤 聯繫發訊人", "uri": contactUrl }}] : []),
+                    ...(uid ? [{ "type": "button", "style": "secondary", "color": "#eeeeee", "action": { "type": "uri", "label": "👤 聯繫發訊人", "uri": `https://line.me/ti/p/~${uid}` }}] : []),
                     { "type": "button", "style": "link", "height": "sm", "action": { "type": "uri", "label": "轉發/修改行程", "uri": liffUrl }}
                 ]
             }
         };
 
         try {
-            await liff.shareTargetPicker([ { "type": "flex", "altText": `📅 行程：${t}`, "contents": flexContents } ]);
-            liff.closeWindow();
-        } catch (err) { alert("傳送失敗，請確認 LINE Developers 設定。"); }
+            const res = await liff.shareTargetPicker([ { "type": "flex", "altText": `📅 行程：${t}`, "contents": flexContents } ]);
+            if (res) liff.closeWindow();
+        } catch (err) {
+            alert("傳送失敗：內容字數過多，請適度減少備註內容。");
+        }
     }
     init();
 </script>
