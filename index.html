@@ -7,19 +7,17 @@
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
         :root { --primary: #00b900; --bg: #f8f9fa; }
-        body { font-family: -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif; background: var(--bg); padding: 15px; margin: 0; }
+        body { font-family: -apple-system, "PingFang TC", sans-serif; background: var(--bg); padding: 15px; margin: 0; }
         .card { background: white; padding: 24px; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); max-width: 450px; margin: auto; }
-        h2 { color: var(--primary); font-size: 22px; margin-top: 0; display: flex; align-items: center; gap: 8px; }
-        .field { margin-bottom: 18px; }
-        label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 14px; color: #444; }
-        input, textarea { width: 100%; padding: 12px; border: 1.5px solid #eee; border-radius: 12px; box-sizing: border-box; font-size: 16px; font-family: inherit; }
-        textarea { resize: vertical; min-height: 80px; }
-        input:focus, textarea:focus { outline: none; border-color: var(--primary); background: #fff; }
-        #map-box { width: 100%; height: 180px; background: #eee; border-radius: 12px; margin-top: 10px; display: none; overflow: hidden; border: 1px solid #eee; }
-        #map-box iframe { width: 100%; height: 100%; border: 0; }
-        button { width: 100%; padding: 16px; border: none; border-radius: 16px; font-size: 18px; font-weight: bold; cursor: pointer; background: var(--primary); color: white; margin-top: 10px; }
-        button:active { transform: scale(0.97); opacity: 0.9; }
-        .hint { font-size: 12px; color: #999; text-align: center; margin-top: 15px; line-height: 1.6; }
+        h2 { color: var(--primary); font-size: 20px; margin-top: 0; display: flex; align-items: center; gap: 8px; }
+        .field { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 14px; color: #444; }
+        input, textarea { width: 100%; padding: 12px; border: 1.5px solid #eee; border-radius: 12px; box-sizing: border-box; font-size: 16px; }
+        textarea { height: 80px; resize: none; }
+        #map-box { width: 100%; height: 180px; border-radius: 12px; margin-top: 10px; display: none; overflow: hidden; border: 1px solid #eee; }
+        button { width: 100%; padding: 16px; border: none; border-radius: 16px; font-size: 18px; font-weight: bold; background: var(--primary); color: white; cursor: pointer; }
+        button:active { opacity: 0.8; transform: scale(0.98); }
+        .hint { font-size: 12px; color: #999; text-align: center; margin-top: 15px; }
     </style>
 </head>
 <body>
@@ -40,35 +38,36 @@
     <div class="field">
         <label>地點</label>
         <input type="text" id="location" placeholder="輸入地點" onkeyup="debouncedMap()">
-        <div id="map-box"><iframe id="map-iframe"></iframe></div>
+        <div id="map-box"><iframe id="map-iframe" width="100%" height="100%" frameborder="0"></iframe></div>
     </div>
     <div class="field">
-        <label>備註 (會同步存入行事曆)</label>
-        <textarea id="note" placeholder="例如：診號 12 號，記得帶健保卡"></textarea>
+        <label>備註</label>
+        <textarea id="note" placeholder="提醒事項..."></textarea>
     </div>
-    <button onclick="sendInvite()">分享給好友 / 群組</button>
-    <div class="hint">送出後，卡片會包含地點預覽與備註內容。</div>
+    <button onclick="sendInvite()">分享邀請卡</button>
+    <p class="hint">送出後可手動上傳檔案作為附件</p>
 </div>
 
 <script>
-    const LIFF_ID = "2009222789-j9OVLjbZ";
+    const LIFF_ID = "2009222789-j9OVLjbZ"; // 請確認此 ID 正確
     let mapTimer;
 
     async function init() {
         try {
             await liff.init({ liffId: LIFF_ID });
             if (!liff.isLoggedIn()) liff.login();
-            const params = new URLSearchParams(window.location.search);
-            // 轉發自動填入邏輯（含備註 n）
-            if (params.has('t')) document.getElementById('title').value = params.get('t');
-            if (params.has('d')) document.getElementById('date').value = params.get('d');
-            if (params.has('s')) document.getElementById('time').value = params.get('s');
-            if (params.has('l')) {
-                document.getElementById('location').value = params.get('l');
+            
+            // 處理轉發參數
+            const p = new URLSearchParams(window.location.search);
+            if (p.has('t')) document.getElementById('title').value = p.get('t');
+            if (p.has('d')) document.getElementById('date').value = p.get('d');
+            if (p.has('s')) document.getElementById('time').value = p.get('s');
+            if (p.has('l')) {
+                document.getElementById('location').value = p.get('l');
                 debouncedMap();
             }
-            if (params.has('n')) document.getElementById('note').value = params.get('n');
-        } catch (e) { console.log(e); }
+            if (p.has('n')) document.getElementById('note').value = p.get('n');
+        } catch (e) { alert("LIFF 初始化失敗：" + e.message); }
     }
 
     function debouncedMap() {
@@ -78,9 +77,7 @@
             const box = document.getElementById('map-box');
             if (loc.trim().length > 1) {
                 box.style.display = "block";
-                document.getElementById('map-iframe').src = `https://www.google.com/maps/embed/v1/place?key=YOUR_API_KEY&q=${encodeURIComponent(loc)}&language=zh-TW`;
-                // 若無 Key，使用預覽版網址
-                document.getElementById('map-iframe').src = `https://maps.google.com/maps?q=${encodeURIComponent(loc)}&hl=zh-TW&z=16&output=embed`;
+                document.getElementById('map-iframe').src = `https://www.google.com/maps?q=${encodeURIComponent(loc)}&output=embed&hl=zh-TW`;
             }
         }, 800);
     }
@@ -95,9 +92,8 @@
         if (!d || !s) return alert("請填寫日期與時間");
 
         const start = (d + 'T' + s).replace(/-|:/g, "") + "00";
-        // 將備註加入 Google 日曆細節中
-        const calUrl = `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(t)}&dates=${start}/${start}&location=${encodeURIComponent(l)}&details=${encodeURIComponent(n + "\n\n(由白六行事曆產生)")}`;
-        // 轉發連結也帶上備註參數
+        // 修正中文編碼問題
+        const calUrl = `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(t)}&dates=${start}/${start}&location=${encodeURIComponent(l)}&details=${encodeURIComponent(n)}`;
         const liffUrl = `https://liff.line.me/${LIFF_ID}?t=${encodeURIComponent(t)}&d=${d}&s=${s}&l=${encodeURIComponent(l)}&n=${encodeURIComponent(n)}`;
 
         const flex = {
@@ -110,26 +106,32 @@
                         { "type": "text", "text": "𓃥 白六行事曆", "weight": "bold", "color": "#00b900", "size": "sm" },
                         { "type": "text", "text": t, "weight": "bold", "size": "xl", "margin": "md" },
                         { "type": "box", "layout": "vertical", "margin": "lg", "spacing": "sm", "contents": [
-                            { "type": "text", "text": `📅 ${d} ${s}`, "color": "#666666", "size": "sm" },
-                            { "type": "text", "text": `📍 ${l}`, "color": "#666666", "size": "sm", "wrap": true }
+                            { "type": "text", "text": `📅 ${d} ${s}`, "size": "sm", "color": "#666666" },
+                            { "type": "text", "text": `📍 ${l}`, "size": "sm", "color": "#666666", "wrap": true }
                         ]},
-                        n ? { "type": "text", "text": n, "margin": "md", "size": "sm", "color": "#333333", "wrap": true, "fontStyle": "italic" } : { "type": "spacer", "size": "xs" },
-                        { "type": "text", "text": "📎 附件檔案請見下方", "size": "xxs", "color": "#aaaaaa", "margin": "xl" }
+                        n ? { "type": "text", "text": n, "margin": "md", "size": "sm", "color": "#333333", "wrap": true } : { "type": "spacer", "size": "xs" }
                     ]
                 },
                 "footer": {
                     "type": "box", "layout": "vertical", "spacing": "sm", "contents": [
-                        { "type": "button", "style": "primary", "color": "#00b900", "action": { "type": "uri", "label": "加入 Google/iOS 日曆", "uri": calUrl }},
-                        { "type": "button", "style": "link", "color": "#aaaaaa", "action": { "type": "uri", "label": "轉發此行程", "uri": liffUrl }}
+                        { "type": "button", "style": "primary", "color": "#00b900", "action": { "type": "uri", "label": "同步至手機日曆", "uri": calUrl }},
+                        { "type": "button", "style": "link", "height": "sm", "action": { "type": "uri", "label": "轉發此行程", "uri": liffUrl }}
                     ]
                 }
             }
         };
 
+        if (!liff.isApiAvailable('shareTargetPicker')) {
+            alert("此 LINE 版本不支援分享功能，或後台權限未開啟。");
+            return;
+        }
+
         try {
             const res = await liff.shareTargetPicker([flex]);
             if (res) liff.closeWindow();
-        } catch (err) { alert("分享失敗"); }
+        } catch (err) {
+            alert("分享失敗原因：" + err.message);
+        }
     }
     init();
 </script>
