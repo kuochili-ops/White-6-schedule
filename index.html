@@ -13,10 +13,11 @@
         .field { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 14px; color: #444; }
         input, textarea { width: 100%; padding: 12px; border: 1.5px solid #eee; border-radius: 12px; box-sizing: border-box; font-size: 16px; }
+        .checkbox-group { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 14px; color: #666; cursor: pointer; }
         #map-box { width: 100%; height: 150px; border-radius: 12px; margin-top: 10px; display: none; overflow: hidden; border: 1px solid #eee; }
-        button { width: 100%; padding: 16px; border: none; border-radius: 16px; font-size: 18px; font-weight: bold; background: var(--primary); color: white; cursor: pointer; }
+        button { width: 100%; padding: 16px; border: none; border-radius: 16px; font-size: 18px; font-weight: bold; background: var(--primary); color: white; cursor: pointer; margin-top: 10px; }
         button:active { opacity: 0.8; transform: scale(0.98); }
-        .hint { font-size: 11px; color: #aaa; text-align: center; margin-top: 15px; line-height: 1.4; }
+        .hint { font-size: 11px; color: #aaa; text-align: center; margin-top: 15px; }
     </style>
 </head>
 <body>
@@ -49,12 +50,15 @@
     </div>
 
     <div class="field">
-        <label>我的 LINE ID (選填，用於聯繫發訊人)</label>
-        <input type="text" id="lineid" placeholder="例如：white666">
+        <label>聯絡資訊</label>
+        <label class="checkbox-group">
+            <input type="checkbox" id="useMyLine" style="width: auto;" onchange="toggleLineId()"> 勾選以附上我的 LINE 聯絡連結
+        </label>
+        <input type="text" id="lineid" placeholder="請手動輸入一次您的 LINE ID (如：white666)" style="display: none;">
     </div>
 
     <button onclick="sendInvite()">分享邀請卡</button>
-    <p class="hint">卡片將包含「同步日曆」與「聯繫我」按鈕</p>
+    <p class="hint">修正傳送錯誤，確保網址完全符合 LINE 規範</p>
 </div>
 
 <script>
@@ -72,8 +76,18 @@
             if (p.has('s')) document.getElementById('time').value = p.get('s');
             if (p.has('l')) { document.getElementById('location').value = p.get('l'); debouncedMap(); }
             if (p.has('n')) document.getElementById('note').value = p.get('n');
-            if (p.has('uid')) document.getElementById('lineid').value = p.get('uid');
+            if (p.has('uid')) {
+                document.getElementById('lineid').value = p.get('uid');
+                document.getElementById('useMyLine').checked = true;
+                toggleLineId();
+            }
         } catch (e) { console.log(e); }
+    }
+
+    function toggleLineId() {
+        const input = document.getElementById('lineid');
+        const isChecked = document.getElementById('useMyLine').checked;
+        input.style.display = isChecked ? "block" : "none";
     }
 
     function debouncedMap() {
@@ -83,7 +97,9 @@
             const box = document.getElementById('map-box');
             if (loc.trim().length > 1) {
                 box.style.display = "block";
-                document.getElementById('map-iframe').src = `https://maps.google.com/maps?q=${encodeURIComponent(loc)}&hl=zh-TW&output=embed`;
+                document.getElementById('map-iframe').src = `https://www.google.com/maps/embed/v1/place?key=YOUR_API_KEY&q=${encodeURIComponent(loc)}`;
+                // 應急方案：
+                document.getElementById('map-iframe').src = `https://maps.google.com/maps?q=${encodeURIComponent(loc)}&hl=zh-TW&z=16&output=embed`;
             }
         }, 800);
     }
@@ -94,20 +110,22 @@
         const s = document.getElementById('time').value;
         const l = document.getElementById('location').value || "地點未定";
         const n = document.getElementById('note').value || "";
-        const uid = document.getElementById('lineid').value;
+        const isChecked = document.getElementById('useMyLine').checked;
+        const uid = isChecked ? document.getElementById('lineid').value : "";
 
         if (!d || !s) return alert("請填寫時間");
 
         const start = (d + 'T' + s).replace(/-|:/g, "") + "00";
         const calUrl = `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(t)}&dates=${start}/${start}&location=${encodeURIComponent(l)}&details=${encodeURIComponent(n)}`;
-        const liffUrl = `https://liff.me/${LIFF_ID}?t=${encodeURIComponent(t)}&d=${d}&s=${s}&l=${encodeURIComponent(l)}&n=${encodeURIComponent(n)}&uid=${encodeURIComponent(uid)}`;
+        
+        // CRITICAL BUG FIX: 必須是 liff.line.me
+        const liffUrl = `https://liff.line.me/${LIFF_ID}?t=${encodeURIComponent(t)}&d=${d}&s=${s}&l=${encodeURIComponent(l)}&n=${encodeURIComponent(n)}&uid=${encodeURIComponent(uid)}`;
         const contactUrl = uid ? `https://line.me/ti/p/~${uid}` : "";
 
         const footerContents = [
             { "type": "button", "style": "primary", "color": "#00b900", "action": { "type": "uri", "label": "同步至手機日曆", "uri": calUrl }}
         ];
 
-        // 如果有填寫 LINE ID，則增加聯絡按鈕
         if (uid) {
             footerContents.push({ "type": "button", "style": "secondary", "margin": "sm", "color": "#eeeeee", "action": { "type": "uri", "label": "👤 聯繫發訊人", "uri": contactUrl }});
         }
@@ -137,7 +155,7 @@
         try {
             const res = await liff.shareTargetPicker([flex]);
             if (res) liff.closeWindow();
-        } catch (err) { alert("傳送失敗"); }
+        } catch (err) { alert("傳送失敗：" + err.message); }
     }
     init();
 </script>
