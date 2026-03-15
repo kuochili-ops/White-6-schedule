@@ -12,11 +12,10 @@
         h2 { color: var(--primary); font-size: 20px; margin-top: 0; display: flex; align-items: center; gap: 8px; }
         .field { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 14px; color: #444; }
-        input, textarea { width: 100%; padding: 12px; border: 1.5px solid #eee; border-radius: 12px; box-sizing: border-box; font-size: 16px; font-family: inherit; outline: none; }
-        input:focus, textarea:focus { border-color: var(--primary); }
-        textarea { height: 100px; resize: none; }
+        input { width: 100%; padding: 12px; border: 1.5px solid #eee; border-radius: 12px; box-sizing: border-box; font-size: 16px; font-family: inherit; outline: none; }
+        input:focus { border-color: var(--primary); }
         .checkbox-group { display: flex; align-items: center; gap: 8px; margin: 10px 0; font-size: 14px; color: #666; cursor: pointer; }
-        #map-box { width: 100%; height: 200px; border-radius: 16px; margin-top: 10px; display: none; overflow: hidden; border: 1px solid #eee; }
+        #map-box { width: 100%; height: 260px; border-radius: 16px; margin-top: 10px; display: none; overflow: hidden; border: 1px solid #eee; }
         #map-iframe { width: 100%; height: 100%; border: 0; }
         button { width: 100%; padding: 16px; border: none; border-radius: 16px; font-size: 18px; font-weight: bold; background: var(--primary); color: white; cursor: pointer; margin-top: 10px; transition: 0.2s; }
         button:active { transform: scale(0.98); opacity: 0.9; }
@@ -48,11 +47,6 @@
     </div>
 
     <div class="field">
-        <label>備註</label>
-        <textarea id="note" placeholder="提醒事項...這裡可以寫很多字"></textarea>
-    </div>
-
-    <div class="field">
         <label class="checkbox-group">
             <input type="checkbox" id="useMyLine" style="width: auto;" onchange="toggleLineId()"> 附上我的 LINE 聯絡連結
         </label>
@@ -60,14 +54,13 @@
     </div>
 
     <button onclick="sendInvite()">分享邀請卡</button>
-    <p class="hint">卡片可顯示完整備註。為確保傳送成功，<br>「轉發」功能將自動簡化部分文字。</p>
+    <p class="hint">已移除備註欄位以提升傳送穩定度。</p>
 </div>
 
 <script>
     const LIFF_ID = "2009222789-j9OVLjbZ";
     let mapTimer;
 
-    // 地圖預覽處理
     function handleLocationInput() {
         const val = document.getElementById('location').value;
         const cleaned = val.replace(/(https?:\/\/[^\s]+)/g, '').trim();
@@ -83,7 +76,9 @@
         mapTimer = setTimeout(() => {
             const box = document.getElementById('map-box');
             box.style.display = "block";
-            document.getElementById('map-iframe').src = `https://www.google.com/maps?q=${encodeURIComponent(query)}&output=embed&hl=zh-TW`;
+            document.getElementById('map-iframe').src = `https://www.google.com/maps/embed/v1/place?key=YOUR_API_KEY_IF_ANY&q=${encodeURIComponent(query)}`.includes('YOUR_API_KEY') 
+                ? `https://www.google.com/maps?q=${encodeURIComponent(query)}&output=embed&hl=zh-TW` 
+                : "";
         }, 800);
     }
 
@@ -103,7 +98,6 @@
                 document.getElementById('date').value = getParam('d');
                 document.getElementById('time').value = getParam('s');
                 document.getElementById('location').value = getParam('l');
-                document.getElementById('note').value = getParam('n');
                 
                 const uid = getParam('uid');
                 if (uid) {
@@ -125,20 +119,19 @@
         const d = document.getElementById('date').value;
         const s = document.getElementById('time').value;
         
-        // 分離完整內容與簡化內容
         const fullL = document.getElementById('location').value.replace(/(https?:\/\/[^\s]+)/g, '').trim();
-        const fullN = document.getElementById('note').value || "";
         const uid = document.getElementById('lineid').value.trim();
         const isWithId = document.getElementById('useMyLine').checked && uid;
 
         if (!d || !s) return alert("請填寫日期與時間");
 
-        // 【防爆策略】轉發按鈕只帶走核心，不帶冗長備註
-        const shortL = fullL.substring(0, 15);
-        const liffUrl = `https://liff.line.me/${LIFF_ID}?t=${encodeURIComponent(t.substring(0,10))}&d=${d}&s=${s}&l=${encodeURIComponent(shortL)}&uid=${encodeURIComponent(uid)}`;
+        // 空間釋放：主題保留 25 字，地點保留 40 字，這在 99% 的情況下都能穩定送出
+        const safeT = t.substring(0, 25);
+        const safeL = fullL.substring(0, 40);
+        const liffUrl = `https://liff.line.me/${LIFF_ID}?t=${encodeURIComponent(safeT)}&d=${d}&s=${s}&l=${encodeURIComponent(safeL)}&uid=${encodeURIComponent(uid)}`;
 
         const start = (d + 'T' + s).replace(/-|:/g, "") + "00";
-        const calUrl = `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(t)}&dates=${start}/${start}&location=${encodeURIComponent(fullL)}&details=${encodeURIComponent(fullN)}`;
+        const calUrl = `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(t)}&dates=${start}/${start}&location=${encodeURIComponent(fullL)}`;
 
         const flexContents = {
             "type": "bubble",
@@ -155,9 +148,7 @@
                             { "type": "text", "text": "地點", "color": "#aaaaaa", "size": "sm", "flex": 1 },
                             { "type": "text", "text": fullL, "wrap": true, "color": "#666666", "size": "sm", "flex": 4 }
                         ]}
-                    ]},
-                    // 這裡可以寫非常多字
-                    fullN ? { "type": "text", "text": fullN, "margin": "lg", "size": "sm", "color": "#333333", "wrap": true, "fontStyle": "italic" } : { "type": "spacer", "size": "xs" }
+                    ]}
                 ]
             },
             "footer": {
@@ -173,7 +164,7 @@
             const res = await liff.shareTargetPicker([ { "type": "flex", "altText": `📅 行程：${t}`, "contents": flexContents } ]);
             if (res) liff.closeWindow();
         } catch (err) {
-            alert("傳送失敗：內容過多導致連結失效，請稍微縮減主題或 LINE ID。");
+            alert("傳送失敗：請縮減主題或地點字數。");
         }
     }
     init();
