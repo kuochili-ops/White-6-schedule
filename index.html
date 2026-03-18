@@ -7,17 +7,20 @@
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <style>
         :root { --primary: #00b900; --bg: #f8f9fa; }
-        body { font-family: -apple-system, "PingFang TC", sans-serif; background: var(--bg); padding: 15px; margin: 0; overflow-x: hidden; }
-        
-        /* 原有簡約卡片樣式 */
-        .card { background: white; padding: 24px; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); max-width: 450px; margin: auto; position: relative; z-index: 1; }
+        body { font-family: -apple-system, "PingFang TC", sans-serif; background: var(--bg); padding: 15px; margin: 0; }
+        .card { background: white; padding: 24px; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); max-width: 450px; margin: auto; }
         h2 { color: var(--primary); font-size: 20px; margin-top: 0; display: flex; align-items: center; gap: 8px; }
         .field { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 14px; color: #444; }
-        input { width: 100%; padding: 12px; border: 1.5px solid #eee; border-radius: 12px; box-sizing: border-box; font-size: 16px; outline: none; transition: 0.3s; }
-        input:focus { border-color: var(--primary); background: #fff; }
+        input { width: 100%; padding: 12px; border: 1.5px solid #eee; border-radius: 12px; box-sizing: border-box; font-size: 16px; outline: none; }
+        input:focus { border-color: var(--primary); }
+        .checkbox-group { display: flex; align-items: center; gap: 8px; margin: 10px 0; font-size: 14px; color: #666; cursor: pointer; }
+        #map-box { width: 100%; height: 220px; border-radius: 16px; margin-top: 10px; display: none; overflow: hidden; border: 1px solid #eee; }
+        #map-iframe { width: 100%; height: 100%; border: 0; }
+        button { width: 100%; padding: 16px; border: none; border-radius: 16px; font-size: 18px; font-weight: bold; background: var(--primary); color: white; cursor: pointer; margin-top: 10px; box-shadow: 0 4px 0 #008a00; }
+        button:active { transform: translateY(2px); box-shadow: 0 2px 0 #008a00; }
         
-        /* 💡 新增：機械翻牌動畫層 (Overlay) */
+        /* 機械翻牌動畫層 */
         #success-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.85); display: none;
@@ -28,37 +31,24 @@
             padding: 30px; border-radius: 16px; border-bottom: 6px solid #000;
             animation: flap-in 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
-        @keyframes flap-in {
-            0% { transform: rotateX(-90deg); opacity: 0; }
-            100% { transform: rotateX(0deg); opacity: 1; }
-        }
-        .flap-text { font-family: 'Courier New', monospace; font-size: 28px; font-weight: bold; letter-spacing: 2px; }
-
-        /* 按鈕與地圖樣式 */
-        #map-box { width: 100%; height: 220px; border-radius: 16px; margin-top: 10px; display: none; overflow: hidden; border: 1px solid #eee; }
-        #map-iframe { width: 100%; height: 100%; border: 0; }
-        button { width: 100%; padding: 16px; border: none; border-radius: 16px; font-size: 18px; font-weight: bold; background: var(--primary); color: white; cursor: pointer; margin-top: 10px; box-shadow: 0 4px 0 #008a00; transition: 0.1s; }
-        button:active { transform: translateY(2px); box-shadow: 0 2px 0 #008a00; }
+        @keyframes flap-in { 0% { transform: rotateX(-90deg); opacity: 0; } 100% { transform: rotateX(0deg); opacity: 1; } }
+        .flap-text { font-family: 'Courier New', monospace; font-size: 24px; font-weight: bold; letter-spacing: 2px; }
         .hint { font-size: 11px; color: #aaa; text-align: center; margin-top: 15px; }
     </style>
 </head>
 <body>
 
 <div id="success-overlay">
-    <div class="flap-container">
-        <div class="flap-text">📅 SETTING...</div>
-    </div>
-    <p style="color: #00b900; margin-top: 20px; font-weight: bold;">白六助理：行程已同步</p>
+    <div class="flap-container"><div class="flap-text">📅 SYNCING...</div></div>
+    <p style="color: #00b900; margin-top: 20px; font-weight: bold;">白六助理：正在排定行程</p>
 </div>
 
 <div class="card">
     <h2>𓃥 白六行事曆</h2>
-    
     <div class="field">
         <label>活動主題</label>
-        <input type="text" id="title" placeholder="點擊此處自動解析剪貼簿" onfocus="tryAutoParse()">
+        <input type="text" id="title" placeholder="點擊自動解析剪貼簿" onfocus="tryAutoParse()">
     </div>
-
     <div class="field">
         <label>時間</label>
         <div style="display: flex; gap: 8px;">
@@ -66,74 +56,93 @@
             <input type="time" id="time">
         </div>
     </div>
-
     <div class="field">
-        <label>地點預覽</label>
-        <input type="text" id="location" placeholder="貼上地址或地圖網址" oninput="handleLocationInput()">
+        <label>地點</label>
+        <input type="text" id="location" placeholder="輸入地址或地圖連結" oninput="handleLocationInput()">
         <div id="map-box"><iframe id="map-iframe"></iframe></div>
     </div>
-
+    <div class="field">
+        <label class="checkbox-group">
+            <input type="checkbox" id="useMyLine" onchange="toggleLineId()"> 附上我的 LINE 聯絡連結
+        </label>
+        <input type="text" id="lineid" placeholder="請輸入您的 LINE ID" style="display: none;">
+    </div>
     <button id="sendBtn" onclick="sendInvite()">分享邀請卡</button>
-    <p class="hint">提醒：系統會自動在活動前為您排定提醒。<br>© 白六數位工具組</p>
+    <p class="hint">提醒：活動將自動同步至白六雲端提醒。<br>© 白六數位工具組</p>
 </div>
 
 <script>
     const LIFF_ID = "2009222789-j9OVLjbZ"; 
     const GAS_URL = "https://script.google.com/macros/s/AKfycbw5E9FUqPv_32jX9a7_983YF_l8xTVfy-xJZplRlllX_QdZz8vJ0EX5s-xTq9i1VsQGlA/exec";
 
-    // 🚀 自動解析功能：當用戶點擊標題框時觸發
     async function tryAutoParse() {
         try {
             const text = await navigator.clipboard.readText();
-            const dateMatch = text.match(/(\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2})/);
-            const timeMatch = text.match(/(\d{1,2}:\d{2})/);
-            let titleClean = text.replace(/(\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2})/, '').replace(/(\d{1,2}:\d{2})/, '').trim();
-
-            if (dateMatch && !document.getElementById('date').value) document.getElementById('date').value = dateMatch[0].replace(/\//g, '-');
-            if (timeMatch && !document.getElementById('time').value) document.getElementById('time').value = timeMatch[0];
-            if (titleClean && !document.getElementById('title').value) document.getElementById('title').value = titleClean.substring(0, 25);
-        } catch (e) { console.log("Clipboard bypass"); }
+            const dM = text.match(/(\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2})/);
+            const tM = text.match(/(\d{1,2}:\d{2})/);
+            let title = text.replace(/(\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2})/, '').replace(/(\d{1,2}:\d{2})/, '').trim();
+            if (dM && !document.getElementById('date').value) document.getElementById('date').value = dM[0].replace(/\//g, '-');
+            if (tM && !document.getElementById('time').value) document.getElementById('time').value = tM[0];
+            if (title && !document.getElementById('title').value) document.getElementById('title').value = title.substring(0, 25);
+        } catch (e) { }
     }
 
     function handleLocationInput() {
         const val = document.getElementById('location').value;
         const cleaned = val.replace(/(https?:\/\/[^\s]+)/g, '').trim();
         if (cleaned.length > 1) {
-            const box = document.getElementById('map-box');
-            box.style.display = "block";
-            document.getElementById('map-iframe').src = `https://maps.google.com/maps?q=${encodeURIComponent(cleaned)}&output=embed&hl=zh-TW`;
+            document.getElementById('map-box').style.display = "block";
+            document.getElementById('map-iframe').src = `https://www.google.com/maps/embed/v1/place?key=您的API_KEY&q=${encodeURIComponent(cleaned)}`;
+            // 註：若無 API Key，建議使用原本的 http://googleusercontent.com/maps.google.com/... 格式
         }
+    }
+
+    function toggleLineId() {
+        document.getElementById('lineid').style.display = document.getElementById('useMyLine').checked ? "block" : "none";
     }
 
     async function init() {
         try {
             await liff.init({ liffId: LIFF_ID });
             if (!liff.isLoggedIn()) liff.login();
-        } catch (e) { console.error(e); }
+            else {
+                const p = new URLSearchParams(window.location.search);
+                if (p.has('t')) {
+                    document.getElementById('title').value = decodeURIComponent(p.get('t'));
+                    document.getElementById('date').value = p.get('d');
+                    document.getElementById('time').value = p.get('s');
+                    document.getElementById('location').value = decodeURIComponent(p.get('l') || "");
+                    const uid = p.get('uid');
+                    if (uid && uid !== "undefined") {
+                        document.getElementById('lineid').value = uid;
+                        document.getElementById('useMyLine').checked = true;
+                        toggleLineId();
+                    }
+                }
+            }
+        } catch (e) { }
     }
 
     async function sendInvite() {
         const t = document.getElementById('title').value || "行程邀請";
         const d = document.getElementById('date').value;
         const s = document.getElementById('time').value;
-        const btn = document.getElementById('sendBtn');
+        const loc = document.getElementById('location').value.replace(/(https?:\/\/[^\s]+)/g, '').trim();
+        const uid = document.getElementById('lineid').value.trim();
+        const isWithId = document.getElementById('useMyLine').checked && uid;
 
         if (!d || !s) return alert("請填寫時間");
 
-        // 💡 觸發觸覺震動回饋
         if (navigator.vibrate) navigator.vibrate(40);
-
-        // 💡 顯示翻牌動畫層
         document.getElementById('success-overlay').style.display = "flex";
-        btn.disabled = true;
 
-        // 同步至 GAS
         try {
             fetch(GAS_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ title: t, time: `${d} ${s}` }) });
         } catch (e) { }
 
         const start = (d + 'T' + s).replace(/-|:/g, "") + "00";
-        const calUrl = `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(t)}&dates=${start}/${start}`;
+        const calUrl = `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(t)}&dates=${start}/${start}&location=${encodeURIComponent(loc)}`;
+        const liffUrl = `https://liff.line.me/${LIFF_ID}?t=${encodeURIComponent(t)}&d=${d}&s=${s}&l=${encodeURIComponent(loc)}&uid=${encodeURIComponent(uid)}`;
 
         const flexContents = {
             "type": "bubble",
@@ -141,26 +150,33 @@
                 "type": "box", "layout": "vertical", "contents": [
                     { "type": "text", "text": "𓃥 白六行事曆", "weight": "bold", "color": "#00b900", "size": "sm" },
                     { "type": "text", "text": t, "weight": "bold", "size": "xl", "margin": "md", "wrap": true },
-                    { "type": "separator", "margin": "md" },
-                    { "type": "box", "layout": "vertical", "margin": "md", "contents": [
-                        { "type": "text", "text": `📅 ${d} ${s}`, "size": "sm", "color": "#666666" }
+                    { "type": "box", "layout": "vertical", "margin": "lg", "spacing": "sm", "contents": [
+                        { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [
+                            { "type": "text", "text": "時間", "color": "#aaaaaa", "size": "sm", "flex": 1 },
+                            { "type": "text", "text": `${d} ${s}`, "wrap": true, "color": "#666666", "size": "sm", "flex": 4 }
+                        ]},
+                        { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [
+                            { "type": "text", "text": "地點", "color": "#aaaaaa", "size": "sm", "flex": 1 },
+                            { "type": "text", "text": loc || "未設定", "wrap": true, "color": "#666666", "size": "sm", "flex": 4 }
+                        ]}
                     ]}
                 ]
             },
             "footer": {
-                "type": "box", "layout": "vertical", "contents": [
-                    { "type": "button", "style": "primary", "color": "#00b900", "action": { "type": "uri", "label": "🗓 存入日曆", "uri": calUrl }}
+                "type": "box", "layout": "vertical", "spacing": "sm", "contents": [
+                    { "type": "button", "style": "primary", "color": "#00b900", "action": { "type": "uri", "label": "🗓 存入手機日曆", "uri": calUrl }},
+                    ...(isWithId ? [{ "type": "button", "style": "secondary", "color": "#eeeeee", "action": { "type": "uri", "label": "👤 聯繫發訊人", "uri": `https://line.me/ti/p/~${uid}` }}] : []),
+                    { "type": "button", "style": "link", "height": "sm", "action": { "type": "uri", "label": "轉發 / 修改行程", "uri": liffUrl }}
                 ]
             }
         };
 
         try {
             const res = await liff.shareTargetPicker([{ "type": "flex", "altText": `📅 行程：${t}`, "contents": flexContents }]);
-            if (res) setTimeout(() => liff.closeWindow(), 1000);
+            if (res) setTimeout(() => liff.closeWindow(), 1200);
             else document.getElementById('success-overlay').style.display = "none";
         } catch (err) {
             document.getElementById('success-overlay').style.display = "none";
-            btn.disabled = false;
         }
     }
     init();
