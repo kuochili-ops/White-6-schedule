@@ -3,214 +3,282 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>𓃥白六行事曆</title>
+    <title>𓃥 白六賀卡·超</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/croppie/2.6.5/croppie.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/croppie/2.6.5/croppie.min.js"></script>
     <style>
-        :root { --primary: #00b900; --bg: #f8f9fa; }
-        body { font-family: -apple-system, "PingFang TC", "Microsoft JhengHei", sans-serif; background: var(--bg); padding: 15px; margin: 0; }
-        .card { background: white; padding: 24px; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); max-width: 450px; margin: auto; }
-        h2 { color: var(--primary); font-size: 20px; margin-top: 0; display: flex; align-items: center; gap: 8px; }
-        .field { margin-bottom: 18px; }
-        label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 14px; color: #444; }
+        body { font-family: -apple-system, "Noto Sans TC", sans-serif; background-color: #f2f4f7; margin: 0; padding: 10px; padding-bottom: 110px; }
+        .container { max-width: 500px; margin: 0 auto; background: white; padding: 15px; border-radius: 28px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
         
-        /* 輸入框樣式優化 */
-        input[type="text"], input[type="date"], input[type="time"] { 
-            width: 100%; padding: 12px; border: 1.5px solid #eee; border-radius: 12px; box-sizing: border-box; font-size: 16px; outline: none; transition: 0.3s; background: #fff;
-        }
-        input:focus { border-color: var(--primary); }
+        /* 情境式編輯器 */
+        .editor-box { display: flex; gap: 10px; margin-bottom: 10px; background: #fafafa; padding: 12px; border-radius: 20px; border: 1px solid #eee; }
+        .input-main { flex: 2; }
+        .input-style { flex: 1.1; border-left: 2.5px solid #00b900; padding-left: 10px; transition: 0.3s; }
+        label { font-size: 10px; color: #bbb; font-weight: bold; display: block; margin-bottom: 2px; }
+        #focus-tag { font-size: 11px; color: #00b900; margin-bottom: 5px; font-weight: 900; }
+        input, textarea, select { width: 100%; padding: 7px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; margin-bottom: 5px; outline: none; }
+        input:focus, textarea:focus { border-color: #00b900; background: #fff; }
 
-        /* 💡 核心修正：複選框文字排版 */
-        .checkbox-container {
-            display: inline-flex;
-            align-items: center;
-            cursor: pointer;
-            margin: 10px 0;
-            font-size: 14px;
-            color: #666;
-            user-select: none;
-            width: 100%;
-        }
-        .checkbox-container input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
-            margin-right: 10px;
-            flex-shrink: 0; /* 防止框被擠壓 */
-            cursor: pointer;
-            accent-color: var(--primary); /* 設定勾選顏色 */
-        }
-        .checkbox-text {
-            line-height: 1.4;
-            white-space: nowrap; /* 確保文字不換行 */
-        }
+        /* 畫布區 */
+        .stage { margin: 10px 0; border: 4px solid #00b900; border-radius: 22px; overflow: hidden; position: relative; background: #000; aspect-ratio: 20/13; }
+        #cp-wrap { width: 100%; height: 100%; }
+        #img-fix { width: 100%; height: 100%; object-fit: cover; display: none; }
+        .overlay { position: absolute; bottom: 12%; left: 20px; right: 20px; pointer-events: none; z-index: 10; text-shadow: 0 2px 8px rgba(255,255,255,0.8); }
 
-        #map-box { width: 100%; height: 220px; border-radius: 16px; margin-top: 10px; display: none; overflow: hidden; border: 1px solid #eee; }
-        #map-iframe { width: 100%; height: 100%; border: 0; }
-        
-        button { width: 100%; padding: 16px; border: none; border-radius: 16px; font-size: 18px; font-weight: bold; background: var(--primary); color: white; cursor: pointer; margin-top: 10px; box-shadow: 0 4px 0 #008a00; transition: 0.1s; }
-        button:active { transform: translateY(2px); box-shadow: 0 2px 0 #008a00; }
-        button:disabled { background: #ccc; box-shadow: none; transform: none; }
+        /* 縮圖操作 */
+        .tray { display: flex; gap: 10px; overflow-x: auto; padding: 10px 5px; scrollbar-width: none; }
+        .t-item { width: 75px; height: 50px; border-radius: 10px; border: 2px solid #eee; object-fit: cover; cursor: pointer; flex-shrink: 0; transition: 0.2s; }
+        .t-item.active { border-color: #00b900; transform: scale(1.05); box-shadow: 0 4px 10px rgba(0,185,0,0.2); }
+        .t-add { width: 75px; height: 50px; border-radius: 10px; border: 2px dashed #ccc; display: flex; align-items: center; justify-content: center; color: #ccc; font-size: 26px; cursor: pointer; flex-shrink: 0; }
 
-        /* 機械翻牌動畫層 */
-        #success-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.85); display: none;
-            flex-direction: column; justify-content: center; align-items: center; z-index: 9999;
-        }
-        .flap-container {
-            perspective: 1000px; background: #333; color: white;
-            padding: 30px; border-radius: 16px; border-bottom: 6px solid #000;
-            animation: flap-in 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        @keyframes flap-in { 0% { transform: rotateX(-90deg); opacity: 0; } 100% { transform: rotateX(0deg); opacity: 1; } }
-        .flap-text { font-family: 'Courier New', monospace; font-size: 24px; font-weight: bold; letter-spacing: 2px; }
-        .hint { font-size: 11px; color: #aaa; text-align: center; margin-top: 15px; }
+        /* 下拉選單 */
+        #menu { position: fixed; bottom: -100%; left: 0; right: 0; background: white; border-radius: 25px 25px 0 0; padding: 20px; box-shadow: 0 -5px 25px rgba(0,0,0,0.15); z-index: 1000; transition: 0.3s; }
+        #menu.open { bottom: 0; }
+        .opt { padding: 15px; text-align: center; font-size: 16px; font-weight: 500; border-bottom: 1px solid #f9f9f9; }
+        .opt.del { color: #ff3b30; }
+        .mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.3); display: none; z-index: 999; }
+
+        .footer { position: fixed; bottom: 0; left: 0; right: 0; padding: 15px; background: white; text-align: center; z-index: 900; }
+        .btn-send { width: 100%; max-width: 450px; background: #00b900; color: white; border: none; padding: 18px; border-radius: 20px; font-size: 19px; font-weight: bold; }
     </style>
 </head>
 <body>
 
-<div id="success-overlay">
-    <div class="flap-container"><div class="flap-text">📅 SYNCING...</div></div>
-    <p style="color: #00b900; margin-top: 20px; font-weight: bold;">白六助理：正在排定行程</p>
-</div>
-
-<div class="card">
-    <h2>𓃥 白六行事曆</h2>
-    <div class="field">
-        <label>活動主題</label>
-        <input type="text" id="title" placeholder="點擊自動解析剪貼簿" onfocus="tryAutoParse()">
+<div class="container">
+    <div style="display:flex; justify-content:space-between; padding:5px;">
+        <span style="font-weight:900; color:#00b900; letter-spacing: 1px;">𓃥 白六賀卡·超</span>
+        <span id="tag-m" style="font-size:10px; color:#999;"></span>
     </div>
-    <div class="field">
-        <label>時間</label>
-        <div style="display: flex; gap: 8px;">
-            <input type="date" id="date">
-            <input type="time" id="time">
+
+    <div class="editor-box">
+        <div class="input-main">
+            <label>收件人姓名</label>
+            <input type="text" id="v-to" placeholder="請輸入對方的名字" oninput="update('to')" onfocus="setContext('to')">
+            <label>祝福內容</label>
+            <textarea id="v-msg" rows="2" placeholder="寫下你的溫馨祝福..." oninput="update('msg')" onfocus="setContext('msg')"></textarea>
+        </div>
+        <div class="input-style" id="style-panel">
+            <div id="focus-tag">設定姓名</div>
+            <label>大小</label>
+            <select id="v-size" onchange="applyStyle('size')">
+                <option value="md">中</option><option value="lg">大</option><option value="xl">特大</option>
+            </select>
+            <label>顏色</label>
+            <input type="color" id="v-color" value="#333333" onchange="applyStyle('color')">
         </div>
     </div>
-    <div class="field">
-        <label>地點</label>
-        <input type="text" id="location" placeholder="輸入地址或地圖連結" oninput="handleLocationInput()">
-        <div id="map-box"><iframe id="map-iframe"></iframe></div>
-    </div>
-    
-    <div class="field">
-        <label class="checkbox-container">
-            <input type="checkbox" id="useMyLine" onchange="toggleLineId()">
-            <span class="checkbox-text">附上我的 LINE 聯絡連結</span>
-        </label>
-        <input type="text" id="lineid" placeholder="請輸入您的 LINE ID" style="display: none;">
+
+    <div class="stage">
+        <div id="cp-wrap"></div>
+        <img id="img-fix">
+        <div class="overlay">
+            <span id="p-to" style="display:block; font-weight:bold;">收件人名字</span>
+            <span id="p-msg" style="display:block;">祝你有個美好的一天！</span>
+        </div>
     </div>
 
-    <button id="sendBtn" onclick="sendInvite()">分享邀請卡</button>
-    <p class="hint">提醒：活動將自動同步至白六雲端提醒。<br>© 白六數位工具組</p>
+    <div class="tray" id="tray">
+        <div class="t-add" onclick="document.getElementById('f-in').click()">+</div>
+        <input type="file" id="f-in" hidden accept="image/*" onchange="handleFile(this)">
+    </div>
+</div>
+
+<div class="mask" id="mask" onclick="closeMenu()"></div>
+<div id="menu">
+    <div class="opt" onclick="triggerFile()">📷 更換這張照片 (保留規格)</div>
+    <div class="opt del" onclick="doDel()">🗑️ 刪除此分頁</div>
+    <div class="opt" onclick="closeMenu()" style="color:#999">取消</div>
+</div>
+
+<div class="footer">
+    <button id="go" class="btn-send" onclick="send()">🚀 傳送白六賀卡組合</button>
 </div>
 
 <script>
-    const LIFF_ID = "2009222789-j9OVLjbZ"; 
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbw5E9FUqPv_32jX9a7_983YF_l8xTVfy-xJZplRlllX_QdZz8vJ0EX5s-xTq9i1VsQGlA/exec";
-
-    async function tryAutoParse() {
-        try {
-            const text = await navigator.clipboard.readText();
-            const dM = text.match(/(\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2})/);
-            const tM = text.match(/(\d{1,2}:\d{2})/);
-            let title = text.replace(/(\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2})/, '').replace(/(\d{1,2}:\d{2})/, '').trim();
-            if (dM && !document.getElementById('date').value) document.getElementById('date').value = dM[0].replace(/\//g, '-');
-            if (tM && !document.getElementById('time').value) document.getElementById('time').value = tM[0];
-            if (title && !document.getElementById('title').value) document.getElementById('title').value = title.substring(0, 25);
-        } catch (e) { }
-    }
-
-    function handleLocationInput() {
-        const val = document.getElementById('location').value;
-        const cleaned = val.replace(/(https?:\/\/[^\s]+)/g, '').trim();
-        if (cleaned.length > 1) {
-            document.getElementById('map-box').style.display = "block";
-            document.getElementById('map-iframe').src = `https://maps.google.com/maps?q=${encodeURIComponent(cleaned)}&output=embed&hl=zh-TW`;
-        }
-    }
-
-    function toggleLineId() {
-        const isChecked = document.getElementById('useMyLine').checked;
-        document.getElementById('lineid').style.display = isChecked ? "block" : "none";
-    }
+    const LIFF_ID = '2009222789-bvdxbeSL';
+    const CLOUD_NAME = 'dnwwaush7';
+    const UPLOAD_PRESET = 'ml_default';
+    
+    let cp, isFwd = false, cards = [], active = 0, menuTarget = 0;
+    let currentCtx = 'to'; 
 
     async function init() {
-        try {
-            await liff.init({ liffId: LIFF_ID });
-            if (!liff.isLoggedIn()) liff.login();
-            else {
-                const p = new URLSearchParams(window.location.search);
-                if (p.has('t')) {
-                    document.getElementById('title').value = decodeURIComponent(p.get('t'));
-                    document.getElementById('date').value = p.get('d');
-                    document.getElementById('time').value = p.get('s');
-                    document.getElementById('location').value = decodeURIComponent(p.get('l') || "");
-                    const uid = p.get('uid');
-                    if (uid && uid !== "undefined") {
-                        document.getElementById('lineid').value = uid;
-                        document.getElementById('useMyLine').checked = true;
-                        toggleLineId();
-                    }
-                }
-            }
-        } catch (e) { }
+        await liff.init({ liffId: LIFF_ID });
+        const p = new URLSearchParams(window.location.search);
+        if (p.has('data')) {
+            isFwd = true;
+            document.getElementById('cp-wrap').style.display = 'none';
+            document.getElementById('img-fix').style.display = 'block';
+            cards = JSON.parse(decodeURIComponent(p.get('data')));
+        } else {
+            cp = new Croppie(document.getElementById('cp-wrap'), {
+                viewport: { width: 300, height: 195, type: 'square' },
+                boundary: { width: '100%', height: '100%' }, showZoomer: false,
+                enableOrientation: true
+            });
+            cards = [{ img: 'https://res.cloudinary.com/dnwwaush7/image/upload/v1774012083/cdegpgigtlzghqnjoadb.jpg', to: '', msg: '', toSize: 'xl', msgSize: 'md', toColor: '#333333', msgColor: '#333333', sync: true }];
+        }
+        render(); load(0);
     }
 
-    async function sendInvite() {
-        const t = document.getElementById('title').value || "行程邀請";
-        const d = document.getElementById('date').value;
-        const s = document.getElementById('time').value;
-        const loc = document.getElementById('location').value.replace(/(https?:\/\/[^\s]+)/g, '').trim();
-        const uid = document.getElementById('lineid').value.trim();
-        const isWithId = document.getElementById('useMyLine').checked && uid;
+    // 圖片瘦身處理：將過大的圖片縮小至寬度 1200px 提高效能
+    async function downsize(base64) {
+        return new Promise(resolve => {
+            const img = new Image();
+            img.onload = () => {
+                const max = 1200;
+                let w = img.width, h = img.height;
+                if (w > max) { h *= max / w; w = max; }
+                const canvas = document.createElement('canvas');
+                canvas.width = w; canvas.height = h;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, w, h);
+                resolve(canvas.toDataURL('image/jpeg', 0.8));
+            };
+            img.src = base64;
+        });
+    }
 
-        if (!d || !s) return alert("請填寫時間");
+    function setContext(ctx) {
+        currentCtx = ctx;
+        document.getElementById('focus-tag').innerText = ctx === 'to' ? '設定姓名' : '設定留言';
+        const c = cards[active];
+        document.getElementById('v-size').value = ctx === 'to' ? c.toSize : c.msgSize;
+        document.getElementById('v-color').value = ctx === 'to' ? c.toColor : c.msgColor;
+    }
 
-        if (navigator.vibrate) navigator.vibrate(40);
-        document.getElementById('success-overlay').style.display = "flex";
-
-        try {
-            fetch(GAS_URL, { method: "POST", mode: "no-cors", body: JSON.stringify({ title: t, time: `${d} ${s}` }) });
-        } catch (e) { }
-
-        const start = (d + 'T' + s).replace(/-|:/g, "") + "00";
-        const calUrl = `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(t)}&dates=${start}/${start}&location=${encodeURIComponent(loc)}`;
-        const liffUrl = `https://liff.line.me/${LIFF_ID}?t=${encodeURIComponent(t)}&d=${d}&s=${s}&l=${encodeURIComponent(loc)}&uid=${encodeURIComponent(uid)}`;
-
-        const flexContents = {
-            "type": "bubble",
-            "body": {
-                "type": "box", "layout": "vertical", "contents": [
-                    { "type": "text", "text": "𓃥 白六行事曆", "weight": "bold", "color": "#00b900", "size": "sm" },
-                    { "type": "text", "text": t, "weight": "bold", "size": "xl", "margin": "md", "wrap": true },
-                    { "type": "box", "layout": "vertical", "margin": "lg", "spacing": "sm", "contents": [
-                        { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [
-                            { "type": "text", "text": "時間", "color": "#aaaaaa", "size": "sm", "flex": 1 },
-                            { "type": "text", "text": `${d} ${s}`, "wrap": true, "color": "#666666", "size": "sm", "flex": 4 }
-                        ]},
-                        { "type": "box", "layout": "baseline", "spacing": "sm", "contents": [
-                            { "type": "text", "text": "地點", "color": "#aaaaaa", "size": "sm", "flex": 1 },
-                            { "type": "text", "text": loc || "未設定", "wrap": true, "color": "#666666", "size": "sm", "flex": 4 }
-                        ]}
-                    ]}
-                ]
-            },
-            "footer": {
-                "type": "box", "layout": "vertical", "spacing": "sm", "contents": [
-                    { "type": "button", "style": "primary", "color": "#00b900", "action": { "type": "uri", "label": "🗓 存入手機日曆", "uri": calUrl }},
-                    ...(isWithId ? [{ "type": "button", "style": "secondary", "color": "#eeeeee", "action": { "type": "uri", "label": "👤 聯繫發訊人", "uri": `https://line.me/ti/p/~${uid}` }}] : []),
-                    { "type": "button", "style": "link", "height": "sm", "action": { "type": "uri", "label": "轉發 / 修改行程", "uri": liffUrl }}
-                ]
-            }
-        };
-
-        try {
-            const res = await liff.shareTargetPicker([{ "type": "flex", "altText": `📅 行程：${t}`, "contents": flexContents }]);
-            if (res) setTimeout(() => liff.closeWindow(), 1200);
-            else document.getElementById('success-overlay').style.display = "none";
-        } catch (err) {
-            document.getElementById('success-overlay').style.display = "none";
+    function applyStyle(type) {
+        const val = document.getElementById(type === 'size' ? 'v-size' : 'v-color').value;
+        const c = cards[active];
+        if (currentCtx === 'to') {
+            if(type==='size') c.toSize = val; else c.toColor = val;
+        } else {
+            if(type==='size') c.msgSize = val; else c.msgColor = val;
         }
+        if (active === 0) {
+            for (let i = 1; i < cards.length; i++) {
+                if (cards[i].sync) {
+                    if (currentCtx === 'to') { if(type==='size') cards[i].toSize=val; else cards[i].toColor=val; }
+                    else { if(type==='size') cards[i].msgSize=val; else cards[i].msgColor=val; }
+                }
+            }
+        } else { c.sync = false; }
+        refresh();
+    }
+
+    function render() {
+        const t = document.getElementById('tray');
+        t.querySelectorAll('.t-item').forEach(e => e.remove());
+        cards.forEach((c, i) => {
+            const img = document.createElement('img');
+            img.className = `t-item ${i === active ? 'active' : ''}`;
+            img.src = c.img;
+            let tIdx;
+            img.onclick = () => {
+                clearTimeout(tIdx);
+                tIdx = setTimeout(async () => { await autoSave(); active = i; render(); load(i); }, 250);
+            };
+            img.ondblclick = () => { clearTimeout(tIdx); menuTarget = i; document.getElementById('mask').style.display='block'; document.getElementById('menu').classList.add('open'); };
+            t.insertBefore(img, t.querySelector('.t-add'));
+        });
+        t.querySelector('.t-add').style.display = (isFwd || cards.length >= 10) ? 'none' : 'flex';
+    }
+
+    async function autoSave() {
+        if (!isFwd && cp) {
+            const blob = await cp.result({ type: 'blob', size: { width: 800 }, format: 'jpeg', circle: false });
+            cards[active].blob = blob;
+            cards[active].img = URL.createObjectURL(blob);
+        }
+    }
+
+    function load(idx) {
+        const c = cards[idx];
+        document.getElementById('v-to').value = c.to;
+        document.getElementById('v-msg').value = c.msg;
+        setContext(currentCtx);
+        if (isFwd) document.getElementById('img-fix').src = c.img;
+        else cp.bind({ url: c.img });
+        refresh();
+    }
+
+    function update(f) {
+        cards[active][f] = document.getElementById(`v-${f}`).value;
+        if (active === 0) {
+            for (let i = 1; i < cards.length; i++) if (cards[i].sync) cards[i][f] = cards[0][f];
+        } else cards[active].sync = false;
+        refresh();
+    }
+
+    function refresh() {
+        const c = cards[active];
+        const t = document.getElementById('p-to'), m = document.getElementById('p-msg');
+        t.innerText = c.to || "收件人名字";
+        t.style.color = c.toColor;
+        t.style.fontSize = { md:'16px', lg:'20px', xl:'24px' }[c.toSize];
+        m.innerText = c.msg || "祝你有個美好的一天！";
+        m.style.color = c.msgColor;
+        m.style.fontSize = { md:'14px', lg:'17px', xl:'21px' }[c.msgSize];
+    }
+
+    function handleFile(input) {
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = async e => {
+                const smallImg = await downsize(e.target.result);
+                if (document.getElementById('menu').classList.contains('open')) {
+                    cards[menuTarget].img = smallImg;
+                    if (menuTarget === active) cp.bind({ url: smallImg });
+                    closeMenu();
+                } else {
+                    await autoSave();
+                    cards.push({ img: smallImg, to: cards[0].to, msg: cards[0].msg, toSize: cards[0].toSize, msgSize: cards[0].msgSize, toColor: cards[0].toColor, msgColor: cards[0].msgColor, sync: true });
+                    active = cards.length - 1;
+                }
+                render(); load(active);
+            };
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    function closeMenu() { document.getElementById('mask').style.display='none'; document.getElementById('menu').classList.remove('open'); }
+    function triggerFile() { document.getElementById('f-in').click(); }
+    function doDel() { if (cards.length <= 1) return; cards.splice(menuTarget, 1); active = 0; render(); load(0); closeMenu(); }
+
+    async function send() {
+        const b = document.getElementById('go'); b.disabled = true;
+        b.innerText = "圖片處理中...";
+        try {
+            if (!isFwd) {
+                await autoSave();
+                for (let i = 0; i < cards.length; i++) {
+                    const fd = new FormData();
+                    fd.append('file', cards[i].blob || cards[i].img);
+                    fd.append('upload_preset', UPLOAD_PRESET);
+                    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method: 'POST', body: fd });
+                    const d = await res.json();
+                    cards[i].img = d.secure_url;
+                }
+            }
+            const data = cards.map(c => ({ img: c.img, to: c.to, msg: c.msg, ts: c.toSize, ms: c.msgSize, tc: c.toColor, mc: c.msgColor }));
+            const url = `https://liff.line.me/${LIFF_ID}?data=${encodeURIComponent(JSON.stringify(data))}`;
+            const bubbles = data.map((c, i) => ({
+                "type": "bubble", "size": "mega",
+                "hero": { "type": "image", "url": c.img, "size": "full", "aspectRatio": "20:13", "aspectMode": "cover" },
+                "body": { "type": "box", "layout": "vertical", "contents": [
+                    { "type": "text", "text": `𓃥 白六賀卡·超 (${i+1}/${data.length})`, "weight": "bold", "color": "#00b900", "size": "xs" },
+                    { "type": "text", "text": c.to || "親愛的朋友", "weight": "bold", "size": c.ts, "color": c.tc, "margin": "md" },
+                    { "type": "text", "text": c.msg || "祝你有個美好的一天！", "wrap": true, "margin": "sm", "size": c.ms === 'xl' ? 'lg' : c.ms, "color": c.mc }
+                ]},
+                "footer": { "type": "box", "layout": "horizontal", "spacing": "sm", "contents": [
+                    { "type": "button", "style": "primary", "color": "#00b900", "height": "sm", "action": { "type": "uri", "label": "快速轉傳", "uri": url } },
+                    { "type": "button", "style": "secondary", "color": "#eeeeee", "height": "sm", "action": { "type": "uri", "label": "重新製作", "uri": `https://liff.line.me/${LIFF_ID}` } }
+                ]}
+            }));
+            await liff.shareTargetPicker([{ "type": "flex", "altText": "𓃥 收到一份白六賀卡組合！", "contents": { "type": "carousel", "contents": bubbles }}]);
+            liff.closeWindow();
+        } catch (e) { b.disabled = false; b.innerText = "🚀 傳送白六賀卡組合"; }
     }
     init();
 </script>
