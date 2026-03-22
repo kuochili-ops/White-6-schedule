@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>𓃥 白六賀卡·單張版</title>
+    <title>𓃥 白六賀卡·超</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/croppie/2.6.5/croppie.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/croppie/2.6.5/croppie.min.js"></script>
     <style>
-        body { font-family: -apple-system, "Noto Sans TC", sans-serif; background-color: #f2f4f7; margin: 0; padding: 10px; padding-bottom: 100px; }
+        body { font-family: -apple-system, "Noto Sans TC", sans-serif; background-color: #f2f4f7; margin: 0; padding: 10px; padding-bottom: 110px; }
         .container { max-width: 500px; margin: 0 auto; background: white; padding: 15px; border-radius: 28px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
-        .editor-box { display: flex; gap: 10px; margin-bottom: 12px; background: #fafafa; padding: 12px; border-radius: 20px; border: 1px solid #eee; }
+        .editor-box { display: flex; gap: 10px; margin-bottom: 10px; background: #fafafa; padding: 12px; border-radius: 20px; border: 1px solid #eee; }
         .input-main { flex: 2; }
         .input-style { flex: 1.1; border-left: 2.5px solid #00b900; padding-left: 10px; }
         label { font-size: 10px; color: #bbb; font-weight: bold; display: block; margin-bottom: 2px; }
@@ -18,8 +18,16 @@
         input, textarea, select { width: 100%; padding: 7px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; margin-bottom: 5px; outline: none; }
         .stage { margin: 10px 0; border: 4px solid #00b900; border-radius: 22px; overflow: hidden; position: relative; background: #000; aspect-ratio: 20/13; }
         #cp-wrap { width: 100%; height: 100%; }
+        #img-fix { width: 100%; height: 100%; object-fit: cover; display: none; }
         .overlay { position: absolute; bottom: 12%; left: 20px; right: 20px; pointer-events: none; z-index: 10; text-shadow: 0 2px 8px rgba(255,255,255,0.8); }
-        .btn-upload { width: 100%; padding: 12px; background: #f0f0f0; border: 2px dashed #ccc; border-radius: 12px; color: #666; font-weight: bold; cursor: pointer; margin-top: 5px; }
+        .tray { display: flex; gap: 10px; overflow-x: auto; padding: 10px 5px; scrollbar-width: none; }
+        .t-item { width: 75px; height: 50px; border-radius: 10px; border: 2px solid #eee; object-fit: cover; flex-shrink: 0; }
+        .t-item.active { border-color: #00b900; transform: scale(1.05); }
+        .t-add { width: 75px; height: 50px; border-radius: 10px; border: 2px dashed #ccc; display: flex; align-items: center; justify-content: center; color: #ccc; font-size: 26px; flex-shrink: 0; }
+        .mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.3); display: none; z-index: 999; }
+        #menu { position: fixed; bottom: -100%; left: 0; right: 0; background: white; border-radius: 25px 25px 0 0; padding: 20px; z-index: 1000; transition: 0.3s; }
+        #menu.open { bottom: 0; }
+        .opt { padding: 15px; text-align: center; font-size: 16px; border-bottom: 1px solid #f9f9f9; }
         .footer { position: fixed; bottom: 0; left: 0; right: 0; padding: 15px; background: white; text-align: center; z-index: 900; }
         .btn-send { width: 100%; max-width: 450px; background: #00b900; color: white; border: none; padding: 18px; border-radius: 20px; font-size: 19px; font-weight: bold; }
     </style>
@@ -27,49 +35,70 @@
 <body>
 
 <div class="container">
-    <div style="padding:5px;"><span style="font-weight:900; color:#00b900;">𓃥 白六賀卡·單張版</span></div>
+    <div style="display:flex; justify-content:space-between; padding:5px;">
+        <span style="font-weight:900; color:#00b900;">𓃥 白六賀卡·超</span>
+    </div>
 
     <div class="editor-box">
         <div class="input-main">
             <label>姓名</label>
-            <input type="text" id="v-to" placeholder="名字" oninput="update()" onfocus="setContext('to')">
-            <label>祝福</label>
-            <textarea id="v-msg" rows="2" placeholder="內容" oninput="update()" onfocus="setContext('msg')"></textarea>
-            <button class="btn-upload" onclick="document.getElementById('f-in').click()">📷 選擇照片</button>
-            <input type="file" id="f-in" hidden accept="image/*" onchange="handleFile(this)">
+            <input type="text" id="v-to" placeholder="收件人名字" oninput="update('to')" onfocus="setContext('to')">
+            <label>內容</label>
+            <textarea id="v-msg" rows="2" placeholder="祝賀內容" oninput="update('msg')" onfocus="setContext('msg')"></textarea>
         </div>
         <div class="input-style">
             <div id="focus-tag">設定姓名</div>
             <label>字體大小</label>
-            <select id="v-size" onchange="update()"><option value="md">中</option><option value="lg">大</option><option value="xl">特大</option></select>
-            <label>文字顏色</label>
-            <input type="color" id="v-color" value="#333333" onchange="update()">
+            <select id="v-size" onchange="applyStyle('size')"><option value="md">中</option><option value="lg">大</option><option value="xl">特大</option></select>
+            <label>顏色</label>
+            <input type="color" id="v-color" value="#333333" onchange="applyStyle('color')">
         </div>
     </div>
 
     <div class="stage">
         <div id="cp-wrap"></div>
+        <img id="img-fix">
         <div class="overlay">
             <span id="p-to" style="display:block; font-weight:bold;">名字</span>
             <span id="p-msg" style="display:block;">祝福內容</span>
         </div>
     </div>
+
+    <div class="tray" id="tray">
+        <div class="t-add" onclick="document.getElementById('f-in').click()">+</div>
+        <input type="file" id="f-in" hidden accept="image/*" onchange="handleFile(this)">
+    </div>
 </div>
 
-<div class="footer"><button id="go" class="btn-send" onclick="send()">🚀 傳送賀卡</button></div>
+<div class="mask" id="mask" onclick="closeMenu()"></div>
+<div id="menu">
+    <div class="opt" onclick="triggerFile()">📷 更換照片</div>
+    <div class="opt" onclick="doDel()" style="color:red">🗑️ 刪除分頁</div>
+    <div class="opt" onclick="closeMenu()">取消</div>
+</div>
+
+<div class="footer"><button id="go" class="btn-send" onclick="send()">🚀 傳送白六賀卡</button></div>
 
 <script>
     const LIFF_ID = '2009222789-bvdxbeSL', CLOUD_NAME = 'dnwwaush7', UPLOAD_PRESET = 'ml_default';
-    let cp, currentCtx = 'to', card = { to:'', msg:'', toS:'xl', msgS:'md', toC:'#333333', msgC:'#333333', img: 'https://res.cloudinary.com/dnwwaush7/image/upload/v1774012083/cdegpgigtlzghqnjoadb.jpg' };
+    let cp, isFwd = false, cards = [], active = 0, menuTarget = 0, currentCtx = 'to'; 
 
     async function init() {
         await liff.init({ liffId: LIFF_ID });
-        cp = new Croppie(document.getElementById('cp-wrap'), {
-            viewport: { width: 300, height: 195, type: 'square' },
-            boundary: { width: '100%', height: '100%' }, showZoomer: false
-        });
-        cp.bind({ url: card.img });
-        updateUI();
+        const p = new URLSearchParams(window.location.search);
+        if (p.has('data')) {
+            isFwd = true;
+            document.getElementById('cp-wrap').style.display = 'none';
+            document.getElementById('img-fix').style.display = 'block';
+            cards = JSON.parse(decodeURIComponent(p.get('data')));
+        } else {
+            cp = new Croppie(document.getElementById('cp-wrap'), {
+                viewport: { width: 300, height: 195, type: 'square' },
+                boundary: { width: '100%', height: '100%' }, showZoomer: false
+            });
+            cards = [{ img: 'https://res.cloudinary.com/dnwwaush7/image/upload/v1774012083/cdegpgigtlzghqnjoadb.jpg', to: '', msg: '', toSize: 'xl', msgSize: 'md', toColor: '#333333', msgColor: '#333333', sync: true }];
+        }
+        render(); load(0);
     }
 
     async function downsize(b64) {
@@ -89,28 +118,74 @@
     function setContext(ctx) {
         currentCtx = ctx;
         document.getElementById('focus-tag').innerText = ctx === 'to' ? '設定姓名' : '設定留言';
-        document.getElementById('v-size').value = ctx === 'to' ? card.toS : card.msgS;
-        document.getElementById('v-color').value = ctx === 'to' ? card.toC : card.msgC;
+        const c = cards[active];
+        document.getElementById('v-size').value = ctx === 'to' ? c.toSize : c.msgSize;
+        document.getElementById('v-color').value = ctx === 'to' ? c.toColor : c.msgColor;
     }
 
-    function update() {
-        card.to = document.getElementById('v-to').value;
-        card.msg = document.getElementById('v-msg').value;
-        const s = document.getElementById('v-size').value;
-        const c = document.getElementById('v-color').value;
-        if (currentCtx === 'to') { card.toS = s; card.toC = c; }
-        else { card.msgS = s; card.msgC = c; }
-        updateUI();
+    function applyStyle(type) {
+        const val = document.getElementById(type === 'size' ? 'v-size' : 'v-color').value;
+        const c = cards[active];
+        if (currentCtx === 'to') { if(type==='size') c.toSize=val; else c.toColor=val; }
+        else { if(type==='size') c.msgSize=val; else c.msgColor=val; }
+        if (active === 0) {
+            for (let i = 1; i < cards.length; i++) if (cards[i].sync) {
+                if (currentCtx === 'to') { if(type==='size') cards[i].toSize=val; else cards[i].toColor=val; }
+                else { if(type==='size') cards[i].msgSize=val; else cards[i].msgColor=val; }
+            }
+        } else c.sync = false;
+        refresh();
     }
 
-    function updateUI() {
+    function render() {
+        const t = document.getElementById('tray');
+        t.querySelectorAll('.t-item').forEach(e => e.remove());
+        cards.forEach((c, i) => {
+            const img = document.createElement('img');
+            img.className = `t-item ${i === active ? 'active' : ''}`;
+            img.src = c.img;
+            let tIdx;
+            img.onclick = () => { clearTimeout(tIdx); tIdx = setTimeout(async () => { await autoSave(); active = i; render(); load(i); }, 250); };
+            img.ondblclick = () => { clearTimeout(tIdx); menuTarget = i; document.getElementById('mask').style.display='block'; document.getElementById('menu').classList.add('open'); };
+            t.insertBefore(img, t.querySelector('.t-add'));
+        });
+    }
+
+    async function autoSave() {
+        if (!isFwd && cp) {
+            const blob = await cp.result({ type: 'blob', size: { width: 800 }, format: 'jpeg' });
+            cards[active].blob = blob;
+            cards[active].img = URL.createObjectURL(blob);
+        }
+    }
+
+    function load(idx) {
+        const c = cards[idx];
+        document.getElementById('v-to').value = c.to;
+        document.getElementById('v-msg').value = c.msg;
+        setContext(currentCtx);
+        if (isFwd) document.getElementById('img-fix').src = c.img;
+        else cp.bind({ url: c.img });
+        refresh();
+    }
+
+    function update(f) {
+        cards[active][f] = document.getElementById(`v-${f}`).value;
+        if (active === 0) for (let i = 1; i < cards.length; i++) if (cards[i].sync) cards[i][f] = cards[0][f];
+        else cards[active].sync = false;
+        refresh();
+    }
+
+    function refresh() {
+        const c = cards[active];
         const t = document.getElementById('p-to'), m = document.getElementById('p-msg');
-        t.innerText = card.to || "名字";
-        t.style.color = card.toC;
-        t.style.fontSize = { md:'16px', lg:'20px', xl:'24px' }[card.toS];
-        m.innerText = card.msg || "祝福內容";
-        m.style.color = card.msgC;
-        m.style.fontSize = { md:'14px', lg:'17px', xl:'21px' }[card.msgS];
+        // 核心修正：徹底不使用 "To:" 字串
+        t.innerText = c.to || "名字";
+        t.style.color = c.toColor;
+        t.style.fontSize = { md:'16px', lg:'20px', xl:'24px' }[c.toSize];
+        m.innerText = c.msg || "祝賀內容";
+        m.style.color = c.msgColor;
+        m.style.fontSize = { md:'14px', lg:'17px', xl:'21px' }[c.msgSize];
     }
 
     function handleFile(input) {
@@ -118,41 +193,58 @@
             const r = new FileReader();
             r.onload = async e => {
                 const small = await downsize(e.target.result);
-                cp.bind({ url: small });
+                if (document.getElementById('menu').classList.contains('open')) {
+                    cards[menuTarget].img = small;
+                    if (menuTarget === active) cp.bind({ url: small });
+                    closeMenu();
+                } else {
+                    await autoSave();
+                    cards.push({ img: small, to: cards[0].to, msg: cards[0].msg, toSize: cards[0].toSize, msgSize: cards[0].msgSize, toColor: cards[0].toColor, msgColor: cards[0].msgColor, sync: true });
+                    active = cards.length - 1;
+                }
+                render(); load(active);
             };
             r.readAsDataURL(input.files[0]);
         }
     }
 
+    function closeMenu() { document.getElementById('mask').style.display='none'; document.getElementById('menu').classList.remove('open'); }
+    function triggerFile() { document.getElementById('f-in').click(); }
+    function doDel() { if (cards.length <= 1) return; cards.splice(menuTarget, 1); active = 0; render(); load(0); closeMenu(); }
+
     async function send() {
-        const b = document.getElementById('go'); b.disabled = true; b.innerText = "處理中...";
+        const b = document.getElementById('go'); b.disabled = true;
         try {
-            const blob = await cp.result({ type: 'blob', size: { width: 800 }, format: 'jpeg' });
-            const fd = new FormData();
-            fd.append('file', blob);
-            fd.append('upload_preset', UPLOAD_PRESET);
-            const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method: 'POST', body: fd });
-            const d = await res.json();
-            
-            const url = `https://liff.line.me/${LIFF_ID}?data=${encodeURIComponent(JSON.stringify([{ img: d.secure_url, to: card.to, msg: card.msg, ts: card.toS, ms: card.msgS, tc: card.toC, mc: card.msgC }]))}`;
-            
-            await liff.shareTargetPicker([{
-                "type": "flex", "altText": "收到一份白六賀卡！",
-                "contents": {
-                    "type": "bubble", "size": "mega",
-                    "hero": { "type": "image", "url": d.secure_url, "size": "full", "aspectRatio": "20:13", "aspectMode": "cover" },
-                    "body": { "type": "box", "layout": "vertical", "contents": [
-                        { "type": "text", "text": "𓃥 白六賀卡", "weight": "bold", "color": "#00b900", "size": "xs" },
-                        { "type": "text", "text": card.to || "親愛的朋友", "weight": "bold", "size": card.toS, "color": card.toC, "margin": "md" },
-                        { "type": "text", "text": card.msg || "祝你有個美好的一天！", "wrap": true, "margin": "sm", "size": card.msgS === 'xl' ? 'lg' : card.msgS, "color": card.msgC }
-                    ]},
-                    "footer": { "type": "box", "layout": "horizontal", "contents": [
-                        { "type": "button", "style": "primary", "color": "#00b900", "action": { "type": "uri", "label": "我也要送", "uri": `https://liff.line.me/${LIFF_ID}` } }
-                    ]}
+            if (!isFwd) {
+                await autoSave();
+                for (let i = 0; i < cards.length; i++) {
+                    const fd = new FormData();
+                    fd.append('file', cards[i].blob || cards[i].img);
+                    fd.append('upload_preset', UPLOAD_PRESET);
+                    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method: 'POST', body: fd });
+                    const d = await res.json();
+                    cards[i].img = d.secure_url;
                 }
-            }]);
+            }
+            const data = cards.map(c => ({ img: c.img, to: c.to, msg: c.msg, ts: c.toSize, ms: c.msgSize, tc: c.toColor, mc: c.msgColor }));
+            const url = `https://liff.line.me/${LIFF_ID}?data=${encodeURIComponent(JSON.stringify(data))}`;
+            const bubbles = data.map((c, i) => ({
+                "type": "bubble", "size": "mega",
+                "hero": { "type": "image", "url": c.img, "size": "full", "aspectRatio": "20:13", "aspectMode": "cover" },
+                "body": { "type": "box", "layout": "vertical", "contents": [
+                    { "type": "text", "text": `𓃥 白六賀卡·超 (${i+1}/${data.length})`, "weight": "bold", "color": "#00b900", "size": "xs" },
+                    // 核心修正：Flex Message 內也徹底移除 "To:"
+                    { "type": "text", "text": c.to || "親愛的朋友", "weight": "bold", "size": c.ts, "color": c.tc, "margin": "md" },
+                    { "type": "text", "text": c.msg || "祝你有個美好的一天！", "wrap": true, "margin": "sm", "size": c.ms === 'xl' ? 'lg' : c.ms, "color": c.mc }
+                ]},
+                "footer": { "type": "box", "layout": "horizontal", "spacing": "sm", "contents": [
+                    { "type": "button", "style": "primary", "color": "#00b900", "height": "sm", "action": { "type": "uri", "label": "快速轉傳", "uri": url } },
+                    { "type": "button", "style": "secondary", "color": "#eeeeee", "height": "sm", "action": { "type": "uri", "label": "重新製作", "uri": `https://liff.line.me/${LIFF_ID}` } }
+                ]}
+            }));
+            await liff.shareTargetPicker([{ "type": "flex", "altText": "收到一份白六賀卡組合！", "contents": { "type": "carousel", "contents": bubbles }}]);
             liff.closeWindow();
-        } catch (e) { b.disabled = false; b.innerText = "🚀 傳送賀卡"; }
+        } catch (e) { b.disabled = false; }
     }
     init();
 </script>
