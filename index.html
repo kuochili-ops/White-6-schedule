@@ -2,249 +2,88 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>𓃥 白六賀卡·超</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>𓃥白六行事曆</title>
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/croppie/2.6.5/croppie.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/croppie/2.6.5/croppie.min.js"></script>
     <style>
-        body { font-family: -apple-system, "Noto Sans TC", sans-serif; background-color: #f2f4f7; margin: 0; padding: 10px; padding-bottom: 110px; }
-        .container { max-width: 500px; margin: 0 auto; background: white; padding: 15px; border-radius: 28px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); }
-        .editor-box { display: flex; gap: 10px; margin-bottom: 10px; background: #fafafa; padding: 12px; border-radius: 20px; border: 1px solid #eee; }
-        .input-main { flex: 2; }
-        .input-style { flex: 1.1; border-left: 2.5px solid #00b900; padding-left: 10px; }
-        label { font-size: 10px; color: #bbb; font-weight: bold; display: block; margin-bottom: 2px; }
-        #focus-tag { font-size: 11px; color: #00b900; margin-bottom: 5px; font-weight: 900; }
-        input, textarea, select { width: 100%; padding: 7px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; margin-bottom: 5px; outline: none; }
-        .stage { margin: 10px 0; border: 4px solid #00b900; border-radius: 22px; overflow: hidden; position: relative; background: #000; aspect-ratio: 20/13; }
-        #cp-wrap { width: 100%; height: 100%; }
-        #img-fix { width: 100%; height: 100%; object-fit: cover; display: none; }
-        .overlay { position: absolute; bottom: 12%; left: 20px; right: 20px; pointer-events: none; z-index: 10; text-shadow: 0 2px 8px rgba(255,255,255,0.8); }
-        .tray { display: flex; gap: 10px; overflow-x: auto; padding: 10px 5px; scrollbar-width: none; }
-        .t-item { width: 75px; height: 50px; border-radius: 10px; border: 2px solid #eee; object-fit: cover; flex-shrink: 0; }
-        .t-item.active { border-color: #00b900; transform: scale(1.05); }
-        .t-add { width: 75px; height: 50px; border-radius: 10px; border: 2px dashed #ccc; display: flex; align-items: center; justify-content: center; color: #ccc; font-size: 26px; flex-shrink: 0; }
-        .mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.3); display: none; z-index: 999; }
-        #menu { position: fixed; bottom: -100%; left: 0; right: 0; background: white; border-radius: 25px 25px 0 0; padding: 20px; z-index: 1000; transition: 0.3s; }
-        #menu.open { bottom: 0; }
-        .opt { padding: 15px; text-align: center; font-size: 16px; border-bottom: 1px solid #f9f9f9; }
-        .footer { position: fixed; bottom: 0; left: 0; right: 0; padding: 15px; background: white; text-align: center; z-index: 900; }
-        .btn-send { width: 100%; max-width: 450px; background: #00b900; color: white; border: none; padding: 18px; border-radius: 20px; font-size: 19px; font-weight: bold; }
+        :root { --primary: #00b900; --bg: #f8f9fa; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); padding: 15px; margin: 0; }
+        .card { background: white; padding: 24px; border-radius: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); max-width: 450px; margin: auto; }
+        h2 { color: var(--primary); font-size: 20px; margin-top: 0; }
+        .field { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; font-size: 14px; }
+        input { width: 100%; padding: 12px; border: 1.5px solid #eee; border-radius: 12px; box-sizing: border-box; font-size: 16px; }
+        #map-box { width: 100%; height: 260px; border-radius: 16px; margin-top: 10px; display: none; overflow: hidden; border: 1px solid #eee; }
+        button { width: 100%; padding: 16px; border: none; border-radius: 16px; font-size: 18px; font-weight: bold; background: var(--primary); color: white; cursor: pointer; }
+        button:disabled { background: #ccc; }
+        .hint { font-size: 11px; color: #aaa; text-align: center; margin-top: 15px; }
     </style>
 </head>
 <body>
-
-<div class="container">
-    <div style="display:flex; justify-content:space-between; padding:5px;">
-        <span style="font-weight:900; color:#00b900;">𓃥 白六賀卡·超</span>
-    </div>
-
-    <div class="editor-box">
-        <div class="input-main">
-            <label>姓名</label>
-            <input type="text" id="v-to" placeholder="收件人名字" oninput="update('to')" onfocus="setContext('to')">
-            <label>內容</label>
-            <textarea id="v-msg" rows="2" placeholder="祝賀內容" oninput="update('msg')" onfocus="setContext('msg')"></textarea>
-        </div>
-        <div class="input-style">
-            <div id="focus-tag">設定姓名</div>
-            <label>字體大小</label>
-            <select id="v-size" onchange="applyStyle('size')"><option value="md">中</option><option value="lg">大</option><option value="xl">特大</option></select>
-            <label>顏色</label>
-            <input type="color" id="v-color" value="#333333" onchange="applyStyle('color')">
-        </div>
-    </div>
-
-    <div class="stage">
-        <div id="cp-wrap"></div>
-        <img id="img-fix">
-        <div class="overlay">
-            <span id="p-to" style="display:block; font-weight:bold;">名字</span>
-            <span id="p-msg" style="display:block;">祝福內容</span>
-        </div>
-    </div>
-
-    <div class="tray" id="tray">
-        <div class="t-add" onclick="document.getElementById('f-in').click()">+</div>
-        <input type="file" id="f-in" hidden accept="image/*" onchange="handleFile(this)">
-    </div>
+<div class="card">
+    <h2>𓃥 白六行事曆</h2>
+    <div class="field"><label>活動主題</label><input type="text" id="title" placeholder="例如：白六課程 A"></div>
+    <div class="field"><label>時間</label><div style="display: flex; gap: 8px;"><input type="date" id="date"><input type="time" id="time"></div></div>
+    <div class="field"><label>地點</label><input type="text" id="location" placeholder="輸入地址" oninput="handleLocationInput()"><div id="map-box"><iframe id="map-iframe" width="100%" height="100%" frameborder="0"></iframe></div></div>
+    <button id="sendBtn" onclick="sendInvite()">分享邀請卡</button>
+    <p class="hint">提醒：系統將自動於活動前 30 分鐘發送 LINE 通知。</p>
 </div>
-
-<div class="mask" id="mask" onclick="closeMenu()"></div>
-<div id="menu">
-    <div class="opt" onclick="triggerFile()">📷 更換照片</div>
-    <div class="opt" onclick="doDel()" style="color:red">🗑️ 刪除分頁</div>
-    <div class="opt" onclick="closeMenu()">取消</div>
-</div>
-
-<div class="footer"><button id="go" class="btn-send" onclick="send()">🚀 傳送白六賀卡</button></div>
 
 <script>
-    const LIFF_ID = '2009222789-bvdxbeSL', CLOUD_NAME = 'dnwwaush7', UPLOAD_PRESET = 'ml_default';
-    let cp, isFwd = false, cards = [], active = 0, menuTarget = 0, currentCtx = 'to'; 
+    const LIFF_ID = "2009222789-j9OVLjbZ"; //
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbw5E9FUqPv_32jX9a7_983YF_l8xTVfy-xJZplRlllX_QdZz8vJ0EX5s-xTq9i1VsQGlA/exec"; //
+    let currentUserId = "";
 
     async function init() {
         await liff.init({ liffId: LIFF_ID });
-        const p = new URLSearchParams(window.location.search);
-        if (p.has('data')) {
-            isFwd = true;
-            document.getElementById('cp-wrap').style.display = 'none';
-            document.getElementById('img-fix').style.display = 'block';
-            cards = JSON.parse(decodeURIComponent(p.get('data')));
+        if (!liff.isLoggedIn()) {
+            liff.login();
         } else {
-            cp = new Croppie(document.getElementById('cp-wrap'), {
-                viewport: { width: 300, height: 195, type: 'square' },
-                boundary: { width: '100%', height: '100%' }, showZoomer: false
-            });
-            cards = [{ img: 'https://res.cloudinary.com/dnwwaush7/image/upload/v1774012083/cdegpgigtlzghqnjoadb.jpg', to: '', msg: '', toSize: 'xl', msgSize: 'md', toColor: '#333333', msgColor: '#333333', sync: true }];
+            const profile = await liff.getProfile();
+            currentUserId = profile.userId; // 自動抓取 User ID
         }
-        render(); load(0);
     }
 
-    async function downsize(b64) {
-        return new Promise(r => {
-            const i = new Image();
-            i.onload = () => {
-                const max = 1200; let w = i.width, h = i.height;
-                if (w > max) { h *= max / w; w = max; }
-                const c = document.createElement('canvas'); c.width = w; c.height = h;
-                c.getContext('2d').drawImage(i, 0, 0, w, h);
-                r(c.toDataURL('image/jpeg', 0.8));
-            };
-            i.src = b64;
+    function handleLocationInput() {
+        const val = document.getElementById('location').value;
+        if (val) {
+            document.getElementById('map-box').style.display = "block";
+            document.getElementById('map-iframe').src = `https://maps.google.com/maps?q=${encodeURIComponent(val)}&output=embed`;
+        }
+    }
+
+    async function sendInvite() {
+        const t = document.getElementById('title').value || "行程邀請";
+        const d = document.getElementById('date').value;
+        const s = document.getElementById('time').value;
+        if (!d || !s) return alert("請填寫時間");
+
+        document.getElementById('sendBtn').disabled = true;
+
+        // 傳送給 GAS 排定提醒
+        fetch(GAS_URL, {
+            method: "POST",
+            mode: "no-cors",
+            body: JSON.stringify({ title: t, time: `${d} ${s}`, target_id: currentUserId })
         });
-    }
 
-    function setContext(ctx) {
-        currentCtx = ctx;
-        document.getElementById('focus-tag').innerText = ctx === 'to' ? '設定姓名' : '設定留言';
-        const c = cards[active];
-        document.getElementById('v-size').value = ctx === 'to' ? c.toSize : c.msgSize;
-        document.getElementById('v-color').value = ctx === 'to' ? c.toColor : c.msgColor;
-    }
-
-    function applyStyle(type) {
-        const val = document.getElementById(type === 'size' ? 'v-size' : 'v-color').value;
-        const c = cards[active];
-        if (currentCtx === 'to') { if(type==='size') c.toSize=val; else c.toColor=val; }
-        else { if(type==='size') c.msgSize=val; else c.msgColor=val; }
-        if (active === 0) {
-            for (let i = 1; i < cards.length; i++) if (cards[i].sync) {
-                if (currentCtx === 'to') { if(type==='size') cards[i].toSize=val; else cards[i].toColor=val; }
-                else { if(type==='size') cards[i].msgSize=val; else cards[i].msgColor=val; }
-            }
-        } else c.sync = false;
-        refresh();
-    }
-
-    function render() {
-        const t = document.getElementById('tray');
-        t.querySelectorAll('.t-item').forEach(e => e.remove());
-        cards.forEach((c, i) => {
-            const img = document.createElement('img');
-            img.className = `t-item ${i === active ? 'active' : ''}`;
-            img.src = c.img;
-            let tIdx;
-            img.onclick = () => { clearTimeout(tIdx); tIdx = setTimeout(async () => { await autoSave(); active = i; render(); load(i); }, 250); };
-            img.ondblclick = () => { clearTimeout(tIdx); menuTarget = i; document.getElementById('mask').style.display='block'; document.getElementById('menu').classList.add('open'); };
-            t.insertBefore(img, t.querySelector('.t-add'));
-        });
-    }
-
-    async function autoSave() {
-        if (!isFwd && cp) {
-            const blob = await cp.result({ type: 'blob', size: { width: 800 }, format: 'jpeg' });
-            cards[active].blob = blob;
-            cards[active].img = URL.createObjectURL(blob);
-        }
-    }
-
-    function load(idx) {
-        const c = cards[idx];
-        document.getElementById('v-to').value = c.to;
-        document.getElementById('v-msg').value = c.msg;
-        setContext(currentCtx);
-        if (isFwd) document.getElementById('img-fix').src = c.img;
-        else cp.bind({ url: c.img });
-        refresh();
-    }
-
-    function update(f) {
-        cards[active][f] = document.getElementById(`v-${f}`).value;
-        if (active === 0) for (let i = 1; i < cards.length; i++) if (cards[i].sync) cards[i][f] = cards[0][f];
-        else cards[active].sync = false;
-        refresh();
-    }
-
-    function refresh() {
-        const c = cards[active];
-        const t = document.getElementById('p-to'), m = document.getElementById('p-msg');
-        // 核心修正：徹底不使用 "To:" 字串
-        t.innerText = c.to || "名字";
-        t.style.color = c.toColor;
-        t.style.fontSize = { md:'16px', lg:'20px', xl:'24px' }[c.toSize];
-        m.innerText = c.msg || "祝賀內容";
-        m.style.color = c.msgColor;
-        m.style.fontSize = { md:'14px', lg:'17px', xl:'21px' }[c.msgSize];
-    }
-
-    function handleFile(input) {
-        if (input.files && input.files[0]) {
-            const r = new FileReader();
-            r.onload = async e => {
-                const small = await downsize(e.target.result);
-                if (document.getElementById('menu').classList.contains('open')) {
-                    cards[menuTarget].img = small;
-                    if (menuTarget === active) cp.bind({ url: small });
-                    closeMenu();
-                } else {
-                    await autoSave();
-                    cards.push({ img: small, to: cards[0].to, msg: cards[0].msg, toSize: cards[0].toSize, msgSize: cards[0].msgSize, toColor: cards[0].toColor, msgColor: cards[0].msgColor, sync: true });
-                    active = cards.length - 1;
-                }
-                render(); load(active);
-            };
-            r.readAsDataURL(input.files[0]);
-        }
-    }
-
-    function closeMenu() { document.getElementById('mask').style.display='none'; document.getElementById('menu').classList.remove('open'); }
-    function triggerFile() { document.getElementById('f-in').click(); }
-    function doDel() { if (cards.length <= 1) return; cards.splice(menuTarget, 1); active = 0; render(); load(0); closeMenu(); }
-
-    async function send() {
-        const b = document.getElementById('go'); b.disabled = true;
-        try {
-            if (!isFwd) {
-                await autoSave();
-                for (let i = 0; i < cards.length; i++) {
-                    const fd = new FormData();
-                    fd.append('file', cards[i].blob || cards[i].img);
-                    fd.append('upload_preset', UPLOAD_PRESET);
-                    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, { method: 'POST', body: fd });
-                    const d = await res.json();
-                    cards[i].img = d.secure_url;
-                }
-            }
-            const data = cards.map(c => ({ img: c.img, to: c.to, msg: c.msg, ts: c.toSize, ms: c.msgSize, tc: c.toColor, mc: c.msgColor }));
-            const url = `https://liff.line.me/${LIFF_ID}?data=${encodeURIComponent(JSON.stringify(data))}`;
-            const bubbles = data.map((c, i) => ({
-                "type": "bubble", "size": "mega",
-                "hero": { "type": "image", "url": c.img, "size": "full", "aspectRatio": "20:13", "aspectMode": "cover" },
+        const liffUrl = `https://liff.line.me/${LIFF_ID}?t=${encodeURIComponent(t)}&d=${d}&s=${s}`;
+        await liff.shareTargetPicker([{
+            "type": "flex",
+            "altText": `📅 行程：${t}`,
+            "contents": {
+                "type": "bubble",
                 "body": { "type": "box", "layout": "vertical", "contents": [
-                    { "type": "text", "text": `𓃥 白六賀卡·超 (${i+1}/${data.length})`, "weight": "bold", "color": "#00b900", "size": "xs" },
-                    // 核心修正：Flex Message 內也徹底移除 "To:"
-                    { "type": "text", "text": c.to || "親愛的朋友", "weight": "bold", "size": c.ts, "color": c.tc, "margin": "md" },
-                    { "type": "text", "text": c.msg || "祝你有個美好的一天！", "wrap": true, "margin": "sm", "size": c.ms === 'xl' ? 'lg' : c.ms, "color": c.mc }
+                    { "type": "text", "text": "𓃥 白六行事曆", "color": "#00b900", "size": "sm" },
+                    { "type": "text", "text": t, "weight": "bold", "size": "xl", "margin": "md" },
+                    { "type": "text", "text": `時間：${d} ${s}`, "size": "sm", "margin": "sm" }
                 ]},
-                "footer": { "type": "box", "layout": "horizontal", "spacing": "sm", "contents": [
-                    { "type": "button", "style": "primary", "color": "#00b900", "height": "sm", "action": { "type": "uri", "label": "快速轉傳", "uri": url } },
-                    { "type": "button", "style": "secondary", "color": "#eeeeee", "height": "sm", "action": { "type": "uri", "label": "重新製作", "uri": `https://liff.line.me/${LIFF_ID}` } }
+                "footer": { "type": "box", "layout": "vertical", "contents": [
+                    { "type": "button", "style": "primary", "color": "#00b900", "action": { "type": "uri", "label": "查看行程", "uri": liffUrl }}
                 ]}
-            }));
-            await liff.shareTargetPicker([{ "type": "flex", "altText": "收到一份白六賀卡組合！", "contents": { "type": "carousel", "contents": bubbles }}]);
-            liff.closeWindow();
-        } catch (e) { b.disabled = false; }
+            }
+        }]);
+        liff.closeWindow();
     }
     init();
 </script>
